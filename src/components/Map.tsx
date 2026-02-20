@@ -190,99 +190,103 @@ export function MapView({ farmacias = [], medicos = [], center = [20.579117, -10
             icon={icon}
           >
             <Popup maxWidth={300}>
-              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              <div className="popup-container">
                 {/* Render all farmacias at this location */}
-                {location.farmacias.map((farmacia, farmaciaIndex) => (
-                  <div key={`farmacia-${farmaciaIndex}`} style={{ marginBottom: location.medicos.length > 0 || farmaciaIndex < location.farmacias.length - 1 ? '16px' : '0', paddingBottom: location.medicos.length > 0 || farmaciaIndex < location.farmacias.length - 1 ? '16px' : '0', borderBottom: location.medicos.length > 0 || farmaciaIndex < location.farmacias.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
-                    <h3 style={{ margin: '0 0 8px 0', color: '#059669' }}>
-                      Farmacia {location.farmacias.length > 1 ? `(${farmaciaIndex + 1}/${location.farmacias.length})` : ''}
-                    </h3>
-                    {farmacia.nombreDeLaCuenta && (
-                      <p style={{ margin: '4px 0' }}>
-                        <strong>Nombre:</strong> {farmacia.nombreDeLaCuenta}
+                {location.farmacias.map((farmacia, farmaciaIndex) => {
+                  const isLastItem = location.medicos.length === 0 && farmaciaIndex === location.farmacias.length - 1;
+                  return (
+                    <div key={`farmacia-${farmaciaIndex}`} className={isLastItem ? '' : 'popup-item'}>
+                      <h3 className="popup-title farmacia">
+                        Farmacia {location.farmacias.length > 1 ? `(${farmaciaIndex + 1}/${location.farmacias.length})` : ''}
+                      </h3>
+                      {farmacia.nombreDeLaCuenta && (
+                        <p className="popup-field">
+                          <strong>Nombre:</strong> {farmacia.nombreDeLaCuenta}
+                        </p>
+                      )}
+                      {farmacia.calleDeEnvio && (
+                        <p className="popup-field">
+                          <strong>Dirección:</strong> {farmacia.calleDeEnvio}
+                        </p>
+                      )}
+                      {farmacia.colonia && (
+                        <p className="popup-field">
+                          <strong>Colonia:</strong> {farmacia.colonia}
+                        </p>
+                      )}
+                      {farmacia.municipio && (
+                        <p className="popup-field">
+                          <strong>Municipio:</strong> {farmacia.municipio}
+                        </p>
+                      )}
+                      <p className="popup-field">
+                        <strong>Brick:</strong> {farmacia.nombreBrick || <span className="popup-no-brick">(Sin Brick)</span>}
                       </p>
-                    )}
-                    {farmacia.calleDeEnvio && (
-                      <p style={{ margin: '4px 0' }}>
-                        <strong>Dirección:</strong> {farmacia.calleDeEnvio}
-                      </p>
-                    )}
-                    {farmacia.colonia && (
-                      <p style={{ margin: '4px 0' }}>
-                        <strong>Colonia:</strong> {farmacia.colonia}
-                      </p>
-                    )}
-                    {farmacia.municipio && (
-                      <p style={{ margin: '4px 0' }}>
-                        <strong>Municipio:</strong> {farmacia.municipio}
-                      </p>
-                    )}
-                    <p style={{ margin: '4px 0' }}>
-                      <strong>Brick:</strong> {farmacia.nombreBrick || <span style={{ fontStyle: 'italic', color: '#9ca3af' }}>(Sin Brick)</span>}
-                    </p>
-                    {farmacia.googleMapsUrl && (
-                      <p style={{ margin: '8px 0 0 0' }}>
-                        <a
-                          href={farmacia.googleMapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: '#059669' }}
-                        >
-                          Ver en Google Maps
-                        </a>
-                      </p>
-                    )}
-                  </div>
-                ))}
+                      {farmacia.googleMapsUrl && (
+                        <p className="popup-link farmacia">
+                          <a
+                            href={farmacia.googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Ver en Google Maps
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {/* Render all medicos at this location */}
-                {location.medicos.map((medico, medicoIndex) => (
-                  <div key={`medico-${medicoIndex}`} style={{ marginBottom: medicoIndex < location.medicos.length - 1 ? '16px' : '0', paddingBottom: medicoIndex < location.medicos.length - 1 ? '16px' : '0', borderBottom: medicoIndex < location.medicos.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
-                    <h3 style={{ margin: '0 0 8px 0', color: '#2563eb' }}>
-                      Médico {location.medicos.length > 1 ? `(${medicoIndex + 1}/${location.medicos.length})` : ''}
-                    </h3>
-                    {medico.nombreDeLaCuenta && (
-                      <p style={{ margin: '4px 0' }}>
-                        <strong>Nombre:</strong> {medico.nombreDeLaCuenta}
+                {location.medicos.map((medico, medicoIndex) => {
+                  const isLastItem = medicoIndex === location.medicos.length - 1;
+                  return (
+                    <div key={`medico-${medicoIndex}`} className={isLastItem ? '' : 'popup-item'}>
+                      <h3 className="popup-title medico">
+                        Médico {location.medicos.length > 1 ? `(${medicoIndex + 1}/${location.medicos.length})` : ''}
+                      </h3>
+                      {medico.nombreDeLaCuenta && (
+                        <p className="popup-field">
+                          <strong>Nombre:</strong> {medico.nombreDeLaCuenta}
+                        </p>
+                      )}
+                      {medico.especialidad && (
+                        <p className="popup-field">
+                          <strong>Especialidad:</strong> {medico.especialidad}
+                        </p>
+                      )}
+                      {medico.calleDeEnvio && (
+                        <p className="popup-field">
+                          <strong>Dirección:</strong> {medico.calleDeEnvio}
+                        </p>
+                      )}
+                      {medico.colonia && (
+                        <p className="popup-field">
+                          <strong>Colonia:</strong> {medico.colonia}
+                        </p>
+                      )}
+                      {medico.ciudadDeEnvio && (
+                        <p className="popup-field">
+                          <strong>Ciudad:</strong> {medico.ciudadDeEnvio}
+                        </p>
+                      )}
+                      <p className="popup-field">
+                        <strong>Brick:</strong> {medico.nombreBrick || <span className="popup-no-brick">(Sin Brick)</span>}
                       </p>
-                    )}
-                    {medico.especialidad && (
-                      <p style={{ margin: '4px 0' }}>
-                        <strong>Especialidad:</strong> {medico.especialidad}
-                      </p>
-                    )}
-                    {medico.calleDeEnvio && (
-                      <p style={{ margin: '4px 0' }}>
-                        <strong>Dirección:</strong> {medico.calleDeEnvio}
-                      </p>
-                    )}
-                    {medico.colonia && (
-                      <p style={{ margin: '4px 0' }}>
-                        <strong>Colonia:</strong> {medico.colonia}
-                      </p>
-                    )}
-                    {medico.ciudadDeEnvio && (
-                      <p style={{ margin: '4px 0' }}>
-                        <strong>Ciudad:</strong> {medico.ciudadDeEnvio}
-                      </p>
-                    )}
-                    <p style={{ margin: '4px 0' }}>
-                      <strong>Brick:</strong> {medico.nombreBrick || <span style={{ fontStyle: 'italic', color: '#9ca3af' }}>(Sin Brick)</span>}
-                    </p>
-                    {medico.googleMapsUrl && (
-                      <p style={{ margin: '8px 0 0 0' }}>
-                        <a
-                          href={medico.googleMapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: '#2563eb' }}
-                        >
-                          Ver en Google Maps
-                        </a>
-                      </p>
-                    )}
-                  </div>
-                ))}
+                      {medico.googleMapsUrl && (
+                        <p className="popup-link medico">
+                          <a
+                            href={medico.googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Ver en Google Maps
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </Popup>
           </Marker>
