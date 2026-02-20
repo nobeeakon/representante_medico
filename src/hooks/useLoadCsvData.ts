@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import type { Farmacia } from '../__types__/farmacia';
 import type { Medico } from '../__types__/medico';
+import farmaciasUrl from '../assets/__data__/farmacias_geocoded_bricks.csv?url';
+import medicosUrl from '../assets/__data__/medicos_geocoded.csv?url';
 
 // Helper function to map CSV row to Medico type
 function mapCsvRowToMedico(row: Record<string, string>): Medico {
@@ -58,7 +60,7 @@ interface UseLoadCsvDataReturn {
 }
 
 /**
- * Custom hook to load CSV data for farmacias and medicos from public directory
+ * Custom hook to load CSV data for farmacias and medicos from assets
  */
 export function useLoadCsvData(): UseLoadCsvDataReturn {
   const [medicos, setMedicos] = useState<Medico[]>([]);
@@ -73,14 +75,14 @@ export function useLoadCsvData(): UseLoadCsvDataReturn {
         setError(null);
 
         // Load farmacias CSV
-        const farmaciasResponse = await fetch('/__data__/farmacias_geocoded_bricks.csv');
+        const farmaciasResponse = await fetch(farmaciasUrl);
         if (!farmaciasResponse.ok) {
           throw new Error(`Failed to load farmacias CSV: ${farmaciasResponse.statusText}`);
         }
         const farmaciasText = await farmaciasResponse.text();
 
         // Load medicos CSV
-        const medicosResponse = await fetch('/__data__/medicos_geocoded.csv');
+        const medicosResponse = await fetch(medicosUrl);
         if (!medicosResponse.ok) {
           throw new Error(`Failed to load medicos CSV: ${medicosResponse.statusText}`);
         }
