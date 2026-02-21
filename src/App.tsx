@@ -1,8 +1,21 @@
 import { useState, useMemo } from 'react'
+import {
+  Box,
+  Container,
+  Typography,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  Paper,
+  Stack,
+  CircularProgress,
+  Alert,
+} from '@mui/material'
+import { Refresh as RefreshIcon } from '@mui/icons-material'
 import { MapView } from './components/Map'
 import { useGoogleSheetsData } from './google-sheets/useGoogleSheetsData'
 import { GoogleAuth } from './google-sheets/GoogleAuth'
-import './App.css'
 
 // Special constant for entries without a brick
 const NO_BRICK = '(Sin Brick)';
@@ -102,12 +115,22 @@ function App() {
   // Show loading state
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-content">
-          <h2>Cargando datos...</h2>
-          <p>Por favor espera mientras cargamos los datos de farmacias y médicos.</p>
-        </div>
-      </div>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+        }}
+      >
+        <Stack spacing={2} alignItems="center" sx={{ textAlign: 'center', maxWidth: 600, px: 2 }}>
+          <CircularProgress size={60} />
+          <Typography variant="h5">Cargando datos...</Typography>
+          <Typography variant="body1" color="text.secondary">
+            Por favor espera mientras cargamos los datos de farmacias y médicos.
+          </Typography>
+        </Stack>
+      </Box>
     );
   }
 
@@ -116,10 +139,21 @@ function App() {
     const isAuthError = error.includes('Not authenticated') || error.includes('Failed to initialize Google API');
 
     return (
-      <div className="error-container">
-        <div className="error-content">
-          <h2>Error al Cargar Datos</h2>
-          <p>{error}</p>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+        }}
+      >
+        <Stack spacing={2} alignItems="center" sx={{ textAlign: 'center', maxWidth: 600, px: 2 }}>
+          <Typography variant="h5" color="error">
+            Error al Cargar Datos
+          </Typography>
+          <Alert severity="error" sx={{ width: '100%' }}>
+            {error}
+          </Alert>
           {isAuthError && (
             <GoogleAuth onAuthStateChange={(isAuth) => {
               if (isAuth) {
@@ -127,113 +161,166 @@ function App() {
               }
             }} />
           )}
-          <button
+          <Button
+            variant="contained"
             onClick={() => window.location.reload()}
-            className="btn-retry"
+            startIcon={<RefreshIcon />}
           >
             Reintentar
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Stack>
+      </Box>
     );
   }
 
   return (
-    <div className="app-container">
-      <header>
-        <h1>Mapa de Farmacias y Médicos</h1>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Stack spacing={3}>
+        {/* Header */}
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="h3" component="h1" gutterBottom>
+            Mapa de Farmacias y Médicos
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <GoogleAuth />
+          </Box>
+        </Box>
 
-        <GoogleAuth />
-
+        {/* Brick Filter */}
         {availableBricks.length > 0 && (
-          <div className="brick-filter-container">
-            <div className="brick-filter-header">
-              <label className="brick-filter-label">
-                Filtrar por Brick:
-              </label>
-              <div className="brick-filter-buttons">
-                <button
-                  onClick={handleSelectAll}
-                  className="btn-select-all"
-                >
-                  {selectedBricks.length === availableBricks.length ? 'Deseleccionar Todo' : 'Seleccionar Todo'}
-                </button>
-                {selectedBricks.length > 0 && (
-                  <button
-                    onClick={() => setSelectedBricks([])}
-                    className="btn-clear-filter"
+          <Paper sx={{ p: 2 }}>
+            <Stack spacing={2}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  Filtrar por Brick:
+                </Typography>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={handleSelectAll}
                   >
-                    Limpiar Filtro
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="brick-list">
-              {availableBricks.map(brick => {
-                const isNoBrick = brick === NO_BRICK;
-                const isSelected = selectedBricks.includes(brick);
-                return (
-                  <label
-                    key={brick}
-                    className={`brick-item ${isSelected ? 'selected' : ''} ${isNoBrick ? 'no-brick' : ''}`}
+                    {selectedBricks.length === availableBricks.length ? 'Deseleccionar Todo' : 'Seleccionar Todo'}
+                  </Button>
+                  {selectedBricks.length > 0 && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      onClick={() => setSelectedBricks([])}
+                    >
+                      Limpiar Filtro
+                    </Button>
+                  )}
+                </Stack>
+              </Box>
+
+              <Paper
+                variant="outlined"
+                sx={{
+                  maxHeight: 300,
+                  overflowY: 'auto',
+                  p: 1.5,
+                }}
+              >
+                <FormGroup>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 0.5,
+                    }}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleBrickToggle(brick)}
-                    />
-                    <span className={`brick-item-label ${isNoBrick ? 'no-brick' : ''}`}>
-                      {brick}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-            <div className="brick-filter-summary">
-              {selectedBricks.length > 0
-                ? `${selectedBricks.length} de ${availableBricks.length} brick${selectedBricks.length !== 1 ? 's' : ''} seleccionado${selectedBricks.length !== 1 ? 's' : ''}`
-                : `${availableBricks.length} brick${availableBricks.length !== 1 ? 's' : ''} disponible${availableBricks.length !== 1 ? 's' : ''} - selecciona para filtrar`}
-            </div>
-          </div>
+                    {availableBricks.map(brick => {
+                      const isNoBrick = brick === NO_BRICK;
+                      const isSelected = selectedBricks.includes(brick);
+                      return (
+                        <FormControlLabel
+                          key={brick}
+                          sx={{ m: 0, px: .3 , height: 'fit-content', border: '1px solid lightgrey' }}
+                          control={
+                            <Checkbox
+                              checked={isSelected}
+                              onChange={() => handleBrickToggle(brick)}
+                              size="small"
+                            />
+                          }
+                          label={
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontStyle: isNoBrick ? 'italic' : 'normal',
+                                color: isNoBrick ? 'text.secondary' : 'text.primary',
+                              }}
+                            >
+                              {brick}
+                            </Typography>
+                          }
+                        />
+                      );
+                    })}
+                  </Box>
+                </FormGroup>
+              </Paper>
+
+              <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+                {selectedBricks.length > 0
+                  ? `${selectedBricks.length} de ${availableBricks.length} brick${selectedBricks.length !== 1 ? 's' : ''} seleccionado${selectedBricks.length !== 1 ? 's' : ''}`
+                  : `${availableBricks.length} brick${availableBricks.length !== 1 ? 's' : ''} disponible${availableBricks.length !== 1 ? 's' : ''} - selecciona para filtrar`}
+              </Typography>
+            </Stack>
+          </Paper>
         )}
 
-      </header>
-      <main>
+        {/* Visibility Toggles */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={showFarmacias}
+                onChange={(e) => setShowFarmacias(e.target.checked)}
+                sx={{ color: 'success.main', '&.Mui-checked': { color: 'success.main' } }}
+              />
+            }
+            label={
+              <Typography sx={{ fontWeight: showFarmacias ? 'bold' : 'normal', color: 'success.main' }}>
+                ● Farmacias
+              </Typography>
+            }
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={showMedicos}
+                onChange={(e) => setShowMedicos(e.target.checked)}
+                sx={{ color: 'primary.main', '&.Mui-checked': { color: 'primary.main' } }}
+              />
+            }
+            label={
+              <Typography sx={{ fontWeight: showMedicos ? 'bold' : 'normal', color: 'primary.main' }}>
+                ● Médicos
+              </Typography>
+            }
+          />
+        </Box>
 
-        <div className="visibility-toggles">
-          <label className="visibility-toggle">
-            <input
-              type="checkbox"
-              checked={showFarmacias}
-              onChange={(e) => setShowFarmacias(e.target.checked)}
-            />
-            <span className={`visibility-toggle-label farmacias ${showFarmacias ? 'active' : ''}`}>● Farmacias</span>
-          </label>
-          <label className="visibility-toggle">
-            <input
-              type="checkbox"
-              checked={showMedicos}
-              onChange={(e) => setShowMedicos(e.target.checked)}
-            />
-            <span className={`visibility-toggle-label medicos ${showMedicos ? 'active' : ''}`}>● Médicos</span>
-          </label>
-        </div>
+        {/* Stats */}
+        <Stack spacing={1} alignItems="center">
+          <Typography variant="body2" color="text.secondary">
+            {farmacias.length} farmacia{farmacias.length !== 1 ? 's' : ''} • {medicos.length} médico{medicos.length !== 1 ? 's' : ''} cargado{(farmacias.length + medicos.length) !== 1 ? 's' : ''}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Mostrando {filteredFarmacias.length} farmacia{filteredFarmacias.length !== 1 ? 's' : ''} y{' '}
+            {filteredMedicos.length} médico{filteredMedicos.length !== 1 ? 's' : ''}
+          </Typography>
+        </Stack>
 
-        <div className="stats">
-          <span>
-
-          {farmacias.length} farmacia{farmacias.length !== 1 ? 's' : ''} • {medicos.length} médico{medicos.length !== 1 ? 's' : ''} cargado{(farmacias.length + medicos.length) !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        <div className="filtered-stats">
-          Mostrando {filteredFarmacias.length} farmacia{filteredFarmacias.length !== 1 ? 's' : ''} y{' '}
-          {filteredMedicos.length} médico{filteredMedicos.length !== 1 ? 's' : ''}
-        </div>
-
-        <MapView farmacias={filteredFarmacias} medicos={filteredMedicos} />
-      </main>
-    </div>
+        {/* Map */}
+        <Box>
+          <MapView farmacias={filteredFarmacias} medicos={filteredMedicos} />
+        </Box>
+      </Stack>
+    </Container>
   )
 }
 

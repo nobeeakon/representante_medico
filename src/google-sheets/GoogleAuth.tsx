@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { Box, Button, Alert, CircularProgress, Link, Stack } from '@mui/material';
+import { Logout as LogoutIcon, TableChart as TableChartIcon } from '@mui/icons-material';
 import { initializeGoogleApi, signIn, signOut, isAuthenticated } from './authService';
 import { getSheetUrl } from './googleSheetsService';
-import './GoogleAuth.css';
 
 type AuthState = {
   status: 'initializing' | 'unauthenticated' | 'authenticated' | 'loading' | 'error';
@@ -86,60 +87,64 @@ export function GoogleAuth({ onAuthStateChange }: { onAuthStateChange?: (isAuthe
 
   if (state.status === 'initializing') {
     return (
-      <div className="google-auth">
-        <div className="google-auth-loading">
-          <span>Initializing...</span>
-        </div>
-      </div>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <CircularProgress size={20} />
+        <Box component="span" sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
+          Initializing...
+        </Box>
+      </Box>
     );
   }
 
   if (state.status === 'loading') {
     return (
-      <div className="google-auth">
-        <div className="google-auth-loading">
-          <span>...</span>
-        </div>
-      </div>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <CircularProgress size={20} />
+      </Box>
     );
   }
 
   return (
-    <div className="google-auth">
+    <Box>
       {state.error && (
-        <div className="google-auth-error">
-          <span>⚠️ {state.error}</span>
-        </div>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {state.error}
+        </Alert>
       )}
 
       {state.status === 'authenticated' ? (
-        <div className="google-auth-connected">
-          <span className="google-auth-status">✓ Connected</span>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Box sx={{ color: 'success.main', fontSize: '0.875rem', fontWeight: 500 }}>
+            ✓ Connected
+          </Box>
           {state.sheetUrl && (
-            <a
+            <Link
               href={state.sheetUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="google-auth-link"
+              sx={{ fontSize: '0.875rem' }}
             >
               View Sheet
-            </a>
+            </Link>
           )}
-          <button
-            className="google-auth-button google-auth-signout"
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<LogoutIcon />}
             onClick={handleSignOut}
           >
             Logout
-          </button>
-        </div>
+          </Button>
+        </Stack>
       ) : (
-        <button
-          className="google-auth-button google-auth-signin"
+        <Button
+          variant="contained"
+          startIcon={<TableChartIcon />}
           onClick={handleSignIn}
         >
-          📊 Connect to Google Sheets
-        </button>
+          Connect to Google Sheets
+        </Button>
       )}
-    </div>
+    </Box>
   );
 }
