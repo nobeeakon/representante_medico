@@ -1,7 +1,7 @@
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Icon, divIcon } from 'leaflet';
-import type { Farmacia } from '../__types__/farmacia';
-import type { Medico } from '../__types__/medico';
+import type { Farmacia } from '../__types__/pharmacy';
+import type { Medico } from '../__types__/doctor';
 import 'leaflet/dist/leaflet.css';
 
 interface MapProps {
@@ -199,14 +199,14 @@ export function MapView({ farmacias = [], medicos = [], center = [20.579117, -10
                       <h3 className="popup-title farmacia">
                         Farmacia {location.farmacias.length > 1 ? `(${farmaciaIndex + 1}/${location.farmacias.length})` : ''}
                       </h3>
-                      {farmacia.nombreDeLaCuenta && (
+                      {farmacia.nombreCuenta && (
                         <p className="popup-field">
-                          <strong>Nombre:</strong> {farmacia.nombreDeLaCuenta}
+                          <strong>Nombre:</strong> {farmacia.nombreCuenta}
                         </p>
                       )}
-                      {farmacia.calleDeEnvio && (
+                      {farmacia.calle && (
                         <p className="popup-field">
-                          <strong>Dirección:</strong> {farmacia.calleDeEnvio}
+                          <strong>Dirección:</strong> {farmacia.calle}
                         </p>
                       )}
                       {farmacia.colonia && (
@@ -245,9 +245,9 @@ export function MapView({ farmacias = [], medicos = [], center = [20.579117, -10
                       <h3 className="popup-title medico">
                         Médico {location.medicos.length > 1 ? `(${medicoIndex + 1}/${location.medicos.length})` : ''}
                       </h3>
-                      {medico.nombreDeLaCuenta && (
+                      {medico.nombreCuenta && (
                         <p className="popup-field">
-                          <strong>Nombre:</strong> {medico.nombreDeLaCuenta}
+                          <strong>Nombre:</strong> {medico.nombreCuenta}
                         </p>
                       )}
                       {medico.especialidad && (
@@ -255,9 +255,9 @@ export function MapView({ farmacias = [], medicos = [], center = [20.579117, -10
                           <strong>Especialidad:</strong> {medico.especialidad}
                         </p>
                       )}
-                      {medico.calleDeEnvio && (
+                      {medico.calle && (
                         <p className="popup-field">
-                          <strong>Dirección:</strong> {medico.calleDeEnvio}
+                          <strong>Dirección:</strong> {medico.calle}
                         </p>
                       )}
                       {medico.colonia && (
@@ -265,9 +265,9 @@ export function MapView({ farmacias = [], medicos = [], center = [20.579117, -10
                           <strong>Colonia:</strong> {medico.colonia}
                         </p>
                       )}
-                      {medico.ciudadDeEnvio && (
+                      {medico.ciudad && (
                         <p className="popup-field">
-                          <strong>Ciudad:</strong> {medico.ciudadDeEnvio}
+                          <strong>Ciudad:</strong> {medico.ciudad}
                         </p>
                       )}
                       <p className="popup-field">

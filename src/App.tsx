@@ -1,13 +1,14 @@
 import { useState, useMemo } from 'react'
 import { MapView } from './components/Map'
-import { useLoadCsvData } from './hooks/useLoadCsvData'
+import { useGoogleSheetsData } from './google-sheets/useGoogleSheetsData'
+import { GoogleAuth } from './google-sheets/GoogleAuth'
 import './App.css'
 
 // Special constant for entries without a brick
 const NO_BRICK = '(Sin Brick)';
 
 function App() {
-  const { medicos, farmacias, loading, error } = useLoadCsvData();
+  const { medicos, farmacias, loading, error } = useGoogleSheetsData();
   const [selectedBricks, setSelectedBricks] = useState<string[]>([]);
   const [showFarmacias, setShowFarmacias] = useState<boolean>(true);
   const [showMedicos, setShowMedicos] = useState<boolean>(true);
@@ -112,11 +113,20 @@ function App() {
 
   // Show error state
   if (error) {
+    const isAuthError = error.includes('Not authenticated') || error.includes('Failed to initialize Google API');
+
     return (
       <div className="error-container">
         <div className="error-content">
           <h2>Error al Cargar Datos</h2>
           <p>{error}</p>
+          {isAuthError && (
+            <GoogleAuth onAuthStateChange={(isAuth) => {
+              if (isAuth) {
+                window.location.reload();
+              }
+            }} />
+          )}
           <button
             onClick={() => window.location.reload()}
             className="btn-retry"
@@ -133,6 +143,7 @@ function App() {
       <header>
         <h1>Mapa de Farmacias y Médicos</h1>
 
+        <GoogleAuth />
 
         {availableBricks.length > 0 && (
           <div className="brick-filter-container">

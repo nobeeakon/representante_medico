@@ -1,21 +1,30 @@
 /**
- * Farmacia (Pharmacy) type based on farmacias_geocoded.csv
+ * Farmacia (Pharmacy) type
  *
  * Represents a pharmacy location with address, contact info,
  * and geocoded coordinates.
  */
 export type Farmacia = {
-  /** Email */
+  /** Unique identifier */
+  id: string;
+
+  /** Creation timestamp (ISO 8601 date string) */
+  createdAt: string;
+
+  /** Email address */
   email?: string;
+
+  /** Phone number */
+  phone?: string;
 
   /** Territorio */
   territorio?: string;
 
-  /** País de envío */
-  paisDeEnvio?: string;
+  /** Pais */
+  pais?: string;
 
-  /** Estado o provincia de envío */
-  estadoOProvinciaDeEnvio?: string;
+  /** Estado o provincia */
+  estado?: string;
 
   /** Municipio */
   municipio?: string;
@@ -23,41 +32,41 @@ export type Farmacia = {
   /** Colonia */
   colonia?: string;
 
-  /** Calle de envío */
-  calleDeEnvio?: string;
+  /** Calle */
+  calle?: string;
 
   /** Estatus (e.g., "Activa") */
   estatus?: string;
 
-  /** Código postal de envío */
-  codigoPostalDeEnvio?: string;
+  /** Codigo postal */
+  codigoPostal?: string;
 
   /** Ruta */
   ruta?: string;
 
   /** Nombre de la cuenta */
-  nombreDeLaCuenta?: string;
+  nombreCuenta?: string;
 
   /** Plantilla de clientes */
-  plantillaDeClientes?: string;
+  plantillaClientes?: string;
 
   /** Folio de tienda */
-  folioDeTienda?: string;
+  folioTienda?: string;
 
-  /** Cédula profesional */
+  /** Cedula profesional */
   cedulaProfesional?: string;
 
   /** Grupo de cadena */
-  grupoDeCadena?: string;
+  grupoCadena?: string;
 
   /** Especialidad */
   especialidad?: string;
 
-  /** Categoría del médico */
-  categoriaDelMedico?: string;
+  /** Categoria del medico */
+  categoriaMedico?: string;
 
   /** Propietario de la cuenta */
-  propietarioDeLaCuenta?: string;
+  propietarioCuenta?: string;
 
   /** Latitude (geocoded) */
   lat?: number;
