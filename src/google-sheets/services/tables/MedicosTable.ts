@@ -1,0 +1,77 @@
+import type { Medico } from '../../../__types__/doctor';
+import { BaseTable } from './BaseTable';
+
+/**
+ * Medicos table implementation
+ * Handles CRUD operations specific to doctor data
+ */
+export class MedicosTable extends BaseTable<Medico> {
+  protected readonly tableName = 'medicos';
+
+  protected readonly headers = [
+    'id',
+    'createdAt',
+    'email',
+    'phone',
+    'estado',
+    'ciudad',
+    'colonia',
+    'calle',
+    'estatus',
+    'codigoPostal',
+    'nombreCuenta',
+    'especialidad',
+    'nombreBrick',
+    'lat',
+    'lng',
+    'googleMapsUrl',
+  ];
+
+  /**
+   * Convert spreadsheet row to Medico object
+   */
+  protected rowToObject(row: string[]): Medico {
+    return {
+      id: row[0] || '',
+      createdAt: row[1] || '',
+      email: row[2] || undefined,
+      phone: row[3] || undefined,
+      estado: row[4] || undefined,
+      ciudad: row[5] || undefined,
+      colonia: row[6] || undefined,
+      calle: row[7] || undefined,
+      estatus: row[8] || undefined,
+      codigoPostal: row[9] || undefined,
+      nombreCuenta: row[10] || undefined,
+      especialidad: row[11] || undefined,
+      nombreBrick: row[12] || undefined,
+      lat: row[13] ? parseFloat(row[13]) : undefined,
+      lng: row[14] ? parseFloat(row[14]) : undefined,
+      googleMapsUrl: row[15] || undefined,
+    };
+  }
+
+  /**
+   * Convert Medico object to spreadsheet row
+   */
+  protected objectToRow(medico: Medico): (string | number)[] {
+    return [
+      medico.id,
+      medico.createdAt,
+      medico.email || '',
+      medico.phone || '',
+      medico.estado || '',
+      medico.ciudad || '',
+      medico.colonia || '',
+      medico.calle || '',
+      medico.estatus || '',
+      medico.codigoPostal || '',
+      medico.nombreCuenta || '',
+      medico.especialidad || '',
+      medico.nombreBrick || '',
+      medico.lat ?? '',
+      medico.lng ?? '',
+      medico.googleMapsUrl || '',
+    ];
+  }
+}

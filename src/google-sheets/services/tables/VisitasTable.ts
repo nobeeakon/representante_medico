@@ -1,0 +1,58 @@
+import type { Visita } from '../../../__types__/visita';
+import { BaseTable } from './BaseTable';
+
+type Columns = keyof Visita;
+
+/**
+ * Visitas table implementation
+ * Handles CRUD operations specific to visit data
+ */
+export class VisitasTable extends BaseTable<Visita> {
+  protected readonly tableName = 'visitas';
+
+  protected readonly headers: Columns[] = [
+    'id',
+    'createdAt',
+    'fechaVisita',
+    'entidadObjetivoTipo',
+    'entidadObjetivoId',
+    'estatus',
+    'etiquetasIds',
+    'nota',
+    'productoJson',
+  ];
+
+  /**
+   * Convert spreadsheet row to Visita object
+   */
+  protected rowToObject(row: string[]): Visita {
+    return {
+      id: row[0] || '',
+      createdAt: row[1] || '',
+      fechaVisita: row[2] || '',
+      entidadObjetivoTipo: row[3] || '',
+      entidadObjetivoId: row[4] || '',
+      estatus: row[5] || '',
+      etiquetasIds: row[6] ? JSON.parse(row[6]) : undefined,
+      nota: row[7] || undefined,
+      productoJson: row[8] ? JSON.parse(row[8]) : [],
+    };
+  }
+
+  /**
+   * Convert Visita object to spreadsheet row
+   */
+  protected objectToRow(visita: Visita): (string | number)[] {
+    return [
+      visita.id,
+      visita.createdAt,
+      visita.fechaVisita,
+      visita.entidadObjetivoTipo,
+      visita.entidadObjetivoId,
+      visita.estatus,
+      visita.etiquetasIds ? JSON.stringify(visita.etiquetasIds) : '',
+      visita.nota || '',
+      JSON.stringify(visita.productoJson),
+    ];
+  }
+}

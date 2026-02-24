@@ -10,10 +10,12 @@ React 19 + TypeScript + Vite application for managing medical representatives' d
 
 ### Database: Google Sheets
 
-The application uses Google Sheets as its database layer. A single spreadsheet (`representante_medico__app`) contains two tabs:
+The application uses Google Sheets as its database layer. A single spreadsheet (`representante_medico__app`) contains four tabs:
 
 - **farmacias** - Pharmacy data (24 columns including contact info, location, credentials, and geographic data)
 - **medicos** - Doctor data (16 columns including contact info, location, specialty, and geographic data)
+- **visitas** - Visit data (9 columns including visit date, entity reference, status, labels, and notes)
+- **labels** - Label data (4 columns including label type and name)
 
 ### Authentication Flow
 
@@ -26,9 +28,11 @@ The application uses Google Sheets as its database layer. A single spreadsheet (
 ### Data Flow
 
 ```
-User Action → React Component → useGoogleSheetsData Hook
+User Action → React Component → Query Hook (useLabelsQuery, etc.)
                                         ↓
-                           googleSheetsService (API calls)
+                           Table Operations (created by factory)
+                                        ↓
+                    Table Classes (LabelsTable, MedicosTable, etc.)
                                         ↓
                            Google Sheets API (gapi.client)
                                         ↓
@@ -40,25 +44,41 @@ User Action → React Component → useGoogleSheetsData Hook
    - Initializes Google API client
    - Stores/retrieves sheet ID from localStorage
 
-2. **Service Layer** ([googleSheetsService.ts](src/google-sheets/googleSheetsService.ts))
-   - CRUD operations for Farmacias and Medicos
-   - Sheet initialization (finds existing or creates new)
-   - Row ↔ Object transformations
-   - ID generation (timestamp + random string)
+2. **Table Layer** ([src/google-sheets/services/tables/](src/google-sheets/services/tables/))
+   - **BaseTable.ts** - Abstract base class providing common CRUD operations
+     - `readAll()` - Fetches all records from a tab
+     - `write()` - Appends new record to the tab (auto-generates ID and createdAt)
+     - `update()` - Updates existing record by index
+     - `rowToObject()` - Abstract method for deserializing row data
+     - `objectToRow()` - Abstract method for serializing objects
+   - **LabelsTable.ts** - Extends BaseTable for label data (4 columns)
+   - **VisitasTable.ts** - Extends BaseTable for visit data (9 columns)
+   - **MedicosTable.ts** - Extends BaseTable for doctor data (16 columns)
+   - **FarmaciasTable.ts** - Extends BaseTable for pharmacy data (24 columns)
 
-3. **Hook Layer** ([useGoogleSheetsData.ts](src/google-sheets/useGoogleSheetsData.ts))
-   - React state management for data
-   - Loading/error states
-   - Data fetching on mount
-   - Methods: `addFarmacia`, `addMedico`, `reload`
+3. **Service Layer** ([src/google-sheets/services/index.ts](src/google-sheets/services/index.ts))
+   - Manages table instances and sheet initialization
+   - **createTableOperations()** factory - Creates standardized table operations interface
+     - Returns `{ read, write, update }` methods
+     - Handles sheet ID initialization automatically
+   - Exports table operations: `labels`, `visitas`, `medicos`, `farmacias`
 
-4. **Component Layer** ([App.tsx](src/App.tsx))
-   - Consumes hook data
+4. **Hook Layer** ([useGoogleSheet.ts](src/google-sheets/useGoogleSheet.ts))
+   - **hookFactory()** - Creates type-safe query hooks from table operations
+     - Manages React state (data, loading, error)
+     - Provides `add()`, `updateItem()`, `reload()` methods
+     - Handles authentication checks and initialization
+   - Exports: `useLabelsQuery`, `useVisitsQuery`, `useDoctorsQuery`, `usePharmaciesQuery`
+
+5. **Component Layer** ([App.tsx](src/App.tsx))
+   - Consumes query hooks
    - Renders UI based on data state
 
 ### Sheet Structure
 
-**Farmacias Columns** (camelCase, Spanish without accents):
+All columns use camelCase, Spanish terms without accents.
+
+**Farmacias Columns** (24 columns):
 ```
 id, createdAt, email, phone, territorio, pais, estado, municipio,
 colonia, calle, estatus, codigoPostal, ruta, nombreCuenta,
@@ -67,25 +87,39 @@ especialidad, categoriaMedico, propietarioCuenta, lat, lng,
 googleMapsUrl, nombreBrick
 ```
 
-**Medicos Columns**:
+**Medicos Columns** (16 columns):
 ```
 id, createdAt, email, phone, estado, ciudad, colonia, calle,
 estatus, codigoPostal, nombreCuenta, especialidad, nombreBrick,
 lat, lng, googleMapsUrl
 ```
 
+**Visitas Columns** (9 columns):
+```
+id, createdAt, fechaVisita, entidadObjetivoTipo, entidadObjetivoId,
+estatus, etiquetasIds, nota
+```
+
+**Labels Columns** (4 columns):
+```
+id, createdAt, labelType, nombre
+```
+
 ### Data Model
 
 - **Farmacia** - See type definition in [src/__types__/pharmacy.ts](src/__types__/pharmacy.ts)
 - **Medico** - See type definition in [src/__types__/doctor.ts](src/__types__/doctor.ts)
+- **Visita** - See type definition in [src/__types__/visita.ts](src/__types__/visita.ts)
+- **Label** - See type definition in [src/__types__/label.ts](src/__types__/label.ts)
 
 ### Key Features
 
 - **Auto Sheet Discovery**: Searches Drive for existing sheet before creating new one
 - **Offline-First ID Caching**: Sheet ID stored in localStorage for instant loading
 - **Type-Safe API**: Full TypeScript definitions for Google Sheets/Drive APIs in [src/google-sheets/types](src/google-sheets/types)
+- **Factory Patterns**: Consistent table operations and query hooks via factory functions
 - **Error Handling**: Comprehensive error extraction from gapi errors
-- **Batch Operations**: Parallel reads of both tabs using `Promise.all`
+- **Batch Operations**: Parallel reads of multiple tabs using `Promise.all`
 
 ## Commands
 
@@ -233,9 +267,18 @@ src/
 src/google-sheets/
 ├── GoogleAuth.tsx              # Auth UI component
 ├── GoogleAuth.css              # Auth component styles
-├── useGoogleSheetsData.ts      # Hook for fetching data
-├── googleAuth.ts               # Auth logic/token management
-├── googleSheetsService.ts      # API service layer
+├── useGoogleSheet.ts           # Query hooks factory
+├── authService.ts              # Auth logic/token management
+├── utils.ts                    # Shared utilities
+├── services/
+│   ├── index.ts                # Table operations factory & exports
+│   ├── sheet-management.ts     # Sheet initialization logic
+│   └── tables/                 # Table class implementations
+│       ├── BaseTable.ts        # Abstract base class
+│       ├── LabelsTable.ts      # Labels table (4 columns)
+│       ├── VisitasTable.ts     # Visits table (9 columns)
+│       ├── MedicosTable.ts     # Doctors table (16 columns)
+│       └── FarmaciasTable.ts   # Pharmacies table (24 columns)
 └── types/                      # Google Sheets specific types
 ```
 
@@ -268,6 +311,202 @@ Custom TypeScript type definitions for Google APIs are maintained in [src/google
 - **Read Operations**: On-demand (component mount, explicit reload)
 - **Write Operations**: Optimistic update (local state updated immediately, then written to sheet)
 - **No Real-Time Sync**: Changes in Google Sheets UI won't auto-reflect in app (requires manual reload)
+
+### Factory Patterns
+
+The application uses two factory patterns to create consistent, type-safe interfaces for working with Google Sheets data.
+
+#### Table Operations Factory
+
+Located in [services/index.ts](src/google-sheets/services/index.ts), the `createTableOperations()` factory creates a standardized interface for each table:
+
+```typescript
+type TableOperations<T> = {
+  read: () => Promise<T[]>;
+  write: (data: Omit<T, 'id' | 'createdAt'>) => Promise<T>;
+  update: (index: number, data: T) => Promise<void>;
+};
+```
+
+**What it does:**
+- Takes a table instance (e.g., `LabelsTable`)
+- Returns methods that automatically handle sheet initialization
+- Ensures consistent error handling and sheet ID management
+
+**Exported operations:**
+```typescript
+export const labels = createTableOperations(labelsTable);
+export const visitas = createTableOperations(visitasTable);
+export const medicos = createTableOperations(medicosTable);
+export const farmacias = createTableOperations(farmaciasTable);
+```
+
+#### Query Hook Factory
+
+Located in [useGoogleSheet.ts](src/google-sheets/useGoogleSheet.ts), the `hookFactory()` creates React hooks for each table:
+
+```typescript
+function hookFactory<DataType>(operations: TableOperations<DataType>) {
+  return function useQuery() {
+    // Returns: { data, loading, error, add, updateItem, reload }
+  };
+}
+```
+
+**What it provides:**
+- Unified state management (idle, loading, success, error)
+- Authentication checks before data operations
+- Optimistic UI updates
+- Methods: `add()`, `updateItem()`, `reload()`
+
+**Exported hooks:**
+```typescript
+export const useLabelsQuery = hookFactory(labels);
+export const useVisitsQuery = hookFactory(visitas);
+export const useDoctorsQuery = hookFactory(medicos);
+export const usePharmaciesQuery = hookFactory(farmacias);
+```
+
+**Usage example:**
+```typescript
+function MyComponent() {
+  const { data, loading, error, add, updateItem } = useLabelsQuery();
+
+  const handleAdd = async () => {
+    await add({ labelType: 'category', nombre: 'Important' });
+  };
+
+  const handleUpdate = async (id: string) => {
+    await updateItem(id, { nombre: 'Very Important' });
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return <div>{data.map(item => /* render */)}</div>;
+}
+```
+
+### Working with Tables
+
+#### Table Architecture
+
+Tables are implemented as classes that extend [BaseTable.ts](src/google-sheets/services/tables/BaseTable.ts). This provides a consistent pattern for CRUD operations across all data types.
+
+**BaseTable Provides:**
+- `readAll(spreadsheetId)` - Fetches all records and caches them
+- `write(spreadsheetId, data)` - Appends a new record (auto-generates ID and createdAt)
+- `update(spreadsheetId, id, data)` - Updates an existing record by ID
+- `getHeaders()` - Returns column headers for the table
+- `getTableName()` - Returns the sheet table name
+
+**Subclasses Must Implement:**
+- `tableName` - The name of the Google Sheets tab (e.g., 'medicos', 'farmacias')
+- `headers` - Array of column names in order
+- `rowToObject(row)` - Deserialize a sheet row into a typed object
+- `objectToRow(obj)` - Serialize an object into a sheet row
+
+#### Adding a New Table
+
+Follow these steps to add a new table type to the application:
+
+1. **Create a type definition** in `src/__types__/your-type.ts`
+   ```typescript
+   export type YourType = {
+     id: string;
+     createdAt: string;
+     field1?: string;
+     field2?: number;
+     // ... additional fields
+   };
+   ```
+
+2. **Create a table class** in [src/google-sheets/services/tables/](src/google-sheets/services/tables/)
+   ```typescript
+   import type { YourType } from '../../../__types__/your-type';
+   import { BaseTable } from './BaseTable';
+
+   export class YourTable extends BaseTable<YourType> {
+     protected readonly tableName = 'your_table_name';
+
+     protected readonly headers = [
+       'id',
+       'createdAt',
+       'field1',
+       'field2',
+       // ... all columns in order
+     ];
+
+     protected rowToObject(row: string[]): YourType {
+       return {
+         id: row[0] || '',
+         createdAt: row[1] || '',
+         field1: row[2] || undefined,
+         field2: row[3] ? parseFloat(row[3]) : undefined,
+         // ... map all fields
+       };
+     }
+
+     protected objectToRow(obj: YourType): (string | number)[] {
+       return [
+         obj.id,
+         obj.createdAt,
+         obj.field1 || '',
+         obj.field2 ?? '',
+         // ... all fields in order
+       ];
+     }
+   }
+   ```
+
+3. **Update services/index.ts** to wire up the table
+   ```typescript
+   // Import the new table
+   import { YourTable } from './tables/YourTable';
+
+   // Instantiate it
+   const yourTable = new YourTable();
+
+   // Add to tables array (for sheet initialization)
+   const tables = [..., yourTable];
+
+   // Create table operations
+   export const yourData = createTableOperations(yourTable);
+   ```
+
+4. **Update useGoogleSheet.ts** to export the query hook
+   ```typescript
+   // Import the table operations
+   import { yourData } from './services';
+
+   // Export the query hook
+   export const useYourDataQuery = hookFactory(yourData);
+   ```
+
+5. **Use the hook in components**
+   ```typescript
+   import { useYourDataQuery } from './google-sheets/useGoogleSheet';
+
+   function MyComponent() {
+     const { data, loading, error, add, updateItem, reload } = useYourDataQuery();
+     // ... use the data
+   }
+   ```
+
+The new table will be automatically created in the Google Sheet with the appropriate headers on first initialization.
+
+#### Updating Existing Tables
+
+When modifying table structure (adding/removing columns):
+
+1. **Update the type definition** in `src/__types__/`
+2. **Update the headers array** in the table class
+3. **Update rowToObject()** to handle the new column mapping
+4. **Update objectToRow()** to serialize the new field
+5. **Update sheet initialization** in googleSheetsService.ts to include new headers
+6. **Consider migration** - Existing sheets won't have new columns automatically
+
+**Important:** The order of fields in `headers`, `rowToObject`, and `objectToRow` must match exactly. Index `N` in `headers` corresponds to `row[N]` and position `N` in the returned array.
 
 ## Entry Points
 

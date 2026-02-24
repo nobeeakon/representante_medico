@@ -13,7 +13,6 @@ const SCOPES = import.meta.env.VITE_GOOGLE_SCOPES;
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'google_access_token',
   EXPIRES_AT: 'google_token_expires_at',
-  SHEET_ID: 'google_sheet_id',
 } as const;
 
 // Global references
@@ -136,7 +135,7 @@ export async function signIn(): Promise<void> {
       }
 
       // Store token
-      const expiresAt = Date.now() + (parseInt(response.expires_in) * 1000);
+      const expiresAt = Date.now() + parseInt(response.expires_in) * 1000;
       storeTokens(response.access_token, expiresAt);
 
       // Set token for gapi client
@@ -234,27 +233,6 @@ export async function getAccessToken(): Promise<string | null> {
   }
 }
 
-/**
- * Store Sheet ID in localStorage
- */
-export function storeSheetId(sheetId: string): void {
-  localStorage.setItem(STORAGE_KEYS.SHEET_ID, sheetId);
-}
-
-/**
- * Get stored Sheet ID
- */
-export function getStoredSheetId(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.SHEET_ID);
-}
-
-/**
- * Clear stored Sheet ID
- */
-export function clearSheetId(): void {
-  localStorage.removeItem(STORAGE_KEYS.SHEET_ID);
-}
-
 // Private helper functions
 
 /**
@@ -271,5 +249,4 @@ function storeTokens(accessToken: string, expiresAt: number): void {
 function clearStoredTokens(): void {
   localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.EXPIRES_AT);
-  localStorage.removeItem(STORAGE_KEYS.SHEET_ID);
 }

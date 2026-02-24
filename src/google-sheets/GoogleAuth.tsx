@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Alert, CircularProgress, Link, Stack } from '@mui/material';
+import { Box, Button, Alert, CircularProgress, Stack } from '@mui/material';
 import { Logout as LogoutIcon, TableChart as TableChartIcon } from '@mui/icons-material';
 import { initializeGoogleApi, signIn, signOut, isAuthenticated } from './authService';
-import { getSheetUrl } from './googleSheetsService';
+import { resetInitializedSheet } from './services';
 
 type AuthState = {
   status: 'initializing' | 'unauthenticated' | 'authenticated' | 'loading' | 'error';
-  sheetUrl: string | null;
   error: string | null;
 };
 
-export function GoogleAuth({ onAuthStateChange }: { onAuthStateChange?: (isAuthenticated: boolean) => void }) {
+export function GoogleAuth({
+  onAuthStateChange,
+}: {
+  onAuthStateChange?: (isAuthenticated: boolean) => void;
+}) {
   const [state, setState] = useState<AuthState>({
     status: 'initializing',
-    sheetUrl: null,
     error: null,
   });
 
@@ -25,7 +27,6 @@ export function GoogleAuth({ onAuthStateChange }: { onAuthStateChange?: (isAuthe
 
         setState({
           status: authStatus ? 'authenticated' : 'unauthenticated',
-          sheetUrl: authStatus ? getSheetUrl() : null,
           error: null,
         });
 
@@ -34,7 +35,6 @@ export function GoogleAuth({ onAuthStateChange }: { onAuthStateChange?: (isAuthe
         console.error('Failed to initialize Google API:', err);
         setState({
           status: 'error',
-          sheetUrl: null,
           error: 'Failed to initialize Google API. Please refresh the page.',
         });
       }
@@ -49,11 +49,9 @@ export function GoogleAuth({ onAuthStateChange }: { onAuthStateChange?: (isAuthe
 
     try {
       await signIn();
-      const sheetUrl = getSheetUrl();
 
       setState({
         status: 'authenticated',
-        sheetUrl,
         error: null,
       });
 
@@ -62,7 +60,6 @@ export function GoogleAuth({ onAuthStateChange }: { onAuthStateChange?: (isAuthe
       console.error('Sign in failed:', err);
       setState({
         status: 'error',
-        sheetUrl: null,
         error: 'Failed to sign in. Please try again.',
       });
     }
@@ -74,6 +71,7 @@ export function GoogleAuth({ onAuthStateChange }: { onAuthStateChange?: (isAuthe
     try {
       await signOut();
       onAuthStateChange?.(false);
+      resetInitializedSheet();
       window.location.reload();
     } catch (err) {
       console.error('Sign out failed:', err);
@@ -117,16 +115,6 @@ export function GoogleAuth({ onAuthStateChange }: { onAuthStateChange?: (isAuthe
           <Box sx={{ color: 'success.main', fontSize: '0.875rem', fontWeight: 500 }}>
             ✓ Connected
           </Box>
-          {state.sheetUrl && (
-            <Link
-              href={state.sheetUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ fontSize: '0.875rem' }}
-            >
-              View Sheet
-            </Link>
-          )}
           <Button
             variant="outlined"
             size="small"
@@ -137,11 +125,7 @@ export function GoogleAuth({ onAuthStateChange }: { onAuthStateChange?: (isAuthe
           </Button>
         </Stack>
       ) : (
-        <Button
-          variant="contained"
-          startIcon={<TableChartIcon />}
-          onClick={handleSignIn}
-        >
+        <Button variant="contained" startIcon={<TableChartIcon />} onClick={handleSignIn}>
           Connect to Google Sheets
         </Button>
       )}

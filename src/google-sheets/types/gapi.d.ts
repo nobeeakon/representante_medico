@@ -19,6 +19,24 @@ declare namespace gapi {
     function setToken(token: { access_token: string } | null): void;
     function getToken(): { access_token: string } | null;
 
+    namespace drive {
+      namespace files {
+        function list(params: {
+          q?: string;
+          fields?: string;
+          spaces?: string;
+          orderBy?: string;
+        }): Promise<{
+          result: {
+            files?: Array<{
+              id?: string;
+              name?: string;
+            }>;
+          };
+        }>;
+      }
+    }
+
     namespace sheets {
       namespace spreadsheets {
         function create(params: {
@@ -39,14 +57,35 @@ declare namespace gapi {
           };
         }>;
 
-        function get(params: {
-          spreadsheetId: string;
-        }): Promise<{
+        function get(params: { spreadsheetId: string; fields?: string }): Promise<{
           result: {
             spreadsheetId: string;
             properties: {
               title: string;
             };
+            sheets?: Array<{
+              properties?: {
+                title?: string;
+              };
+            }>;
+          };
+        }>;
+
+        function batchUpdate(params: {
+          spreadsheetId: string;
+          resource: {
+            requests: Array<{
+              addSheet?: {
+                properties: {
+                  title: string;
+                };
+              };
+            }>;
+          };
+        }): Promise<{
+          result: {
+            spreadsheetId: string;
+            replies: unknown[];
           };
         }>;
 
@@ -85,10 +124,7 @@ declare namespace gapi {
             };
           }>;
 
-          function get(params: {
-            spreadsheetId: string;
-            range: string;
-          }): Promise<{
+          function get(params: { spreadsheetId: string; range: string }): Promise<{
             result: {
               values?: string[][];
             };

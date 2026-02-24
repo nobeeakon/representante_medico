@@ -1,0 +1,20 @@
+# Build outputs
+dist
+build
+coverage
+
+# Dependencies
+node_modules
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment files
+.env.local
+.env.*.local
+
+# Generated files
+*.log
+.DS_Store

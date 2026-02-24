@@ -1,37 +1,60 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react';
 import {
   Box,
   Container,
   Typography,
-  Button,
   Checkbox,
   FormControlLabel,
-  FormGroup,
-  Paper,
   Stack,
   CircularProgress,
-  Alert,
-} from '@mui/material'
-import { Refresh as RefreshIcon } from '@mui/icons-material'
-import { MapView } from './components/Map'
-import { useGoogleSheetsData } from './google-sheets/useGoogleSheetsData'
-import { GoogleAuth } from './google-sheets/GoogleAuth'
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Link,
+} from '@mui/material';
+import { MapView } from './components/Map';
+import { ErrorState } from './components/ErrorState';
+import { BrickFilter, NO_BRICK } from './components/BrickFilter';
+import { usePharmaciesQuery, useDoctorsQuery } from './google-sheets/useGoogleSheet';
+import { GoogleAuth } from './google-sheets/GoogleAuth';
 
-// Special constant for entries without a brick
-const NO_BRICK = '(Sin Brick)';
+type SelectedEntity = {
+  type: 'farmacia' | 'medico';
+  id: string;
+};
 
 function App() {
-  const { medicos, farmacias, loading, error } = useGoogleSheetsData();
+  const pharmacies = usePharmaciesQuery();
+  const doctors = useDoctorsQuery();
   const [selectedBricks, setSelectedBricks] = useState<string[]>([]);
   const [showFarmacias, setShowFarmacias] = useState<boolean>(true);
   const [showMedicos, setShowMedicos] = useState<boolean>(true);
+  const [selectedEntities, setSelectedEntities] = useState<SelectedEntity[]>([]);
+
+  // Handler to toggle entity selection
+  const toggleEntitySelection = (entity: SelectedEntity) => {
+    setSelectedEntities((prev) => {
+      const isSelected = prev.some((e) => e.type === entity.type && e.id === entity.id);
+      if (isSelected) {
+        // Remove from selection
+        return prev.filter((e) => !(e.type === entity.type && e.id === entity.id));
+      } else {
+        // Add to selection
+        return [...prev, entity];
+      }
+    });
+  };
 
   // Get unique brick names from both farmacias and medicos
   const availableBricks = useMemo(() => {
     const brickSet = new Set<string>();
     let hasUndefinedBrick = false;
 
-    farmacias.forEach(farmacia => {
+    pharmacies.data.forEach((farmacia) => {
       if (farmacia.nombreBrick) {
         brickSet.add(farmacia.nombreBrick);
       } else {
@@ -39,7 +62,7 @@ function App() {
       }
     });
 
-    medicos.forEach(medico => {
+    doctors.data.forEach((medico) => {
       if (medico.nombreBrick) {
         brickSet.add(medico.nombreBrick);
       } else {
@@ -55,7 +78,7 @@ function App() {
     }
 
     return bricksArray;
-  }, [farmacias, medicos]);
+  }, [pharmacies.data, doctors.data]);
 
   // Filter farmacias and medicos based on selected bricks and visibility toggles
   const filteredFarmacias = useMemo(() => {
@@ -63,9 +86,9 @@ function App() {
       return [];
     }
     if (selectedBricks.length === 0) {
-      return farmacias;
+      return pharmacies.data;
     }
-    return farmacias.filter(farmacia => {
+    return pharmacies.data.filter((farmacia) => {
       // Check if NO_BRICK is selected and this farmacia has no brick
       if (selectedBricks.includes(NO_BRICK) && !farmacia.nombreBrick) {
         return true;
@@ -73,16 +96,16 @@ function App() {
       // Check if this farmacia's brick is in the selected list
       return farmacia.nombreBrick && selectedBricks.includes(farmacia.nombreBrick);
     });
-  }, [farmacias, selectedBricks, showFarmacias]);
+  }, [pharmacies.data, selectedBricks, showFarmacias]);
 
   const filteredMedicos = useMemo(() => {
     if (!showMedicos) {
       return [];
     }
     if (selectedBricks.length === 0) {
-      return medicos;
+      return doctors.data;
     }
-    return medicos.filter(medico => {
+    return doctors.data.filter((medico) => {
       // Check if NO_BRICK is selected and this medico has no brick
       if (selectedBricks.includes(NO_BRICK) && !medico.nombreBrick) {
         return true;
@@ -90,30 +113,35 @@ function App() {
       // Check if this medico's brick is in the selected list
       return medico.nombreBrick && selectedBricks.includes(medico.nombreBrick);
     });
-  }, [medicos, selectedBricks, showMedicos]);
+  }, [doctors.data, selectedBricks, showMedicos]);
 
-  // Handle individual brick checkbox toggle
-  const handleBrickToggle = (brick: string): void => {
-    setSelectedBricks(prev => {
-      if (prev.includes(brick)) {
-        return prev.filter(b => b !== brick);
-      } else {
-        return [...prev, brick];
-      }
-    });
-  };
+  // Get full entity data for selected entities (farmacias first, then medicos)
+  const selectedEntitiesWithData = useMemo(() => {
+    const farmaciasData = selectedEntities
+      .filter((e) => e.type === 'farmacia')
+      .map((e) => {
+        const farmacia = pharmacies.data.find((f) => f.id === e.id);
+        return farmacia ? { type: 'farmacia' as const, data: farmacia } : null;
+      })
+      .filter((item): item is { type: 'farmacia'; data: typeof pharmacies.data[0] } => item !== null);
 
-  // Handle select all / deselect all
-  const handleSelectAll = (): void => {
-    if (selectedBricks.length === availableBricks.length) {
-      setSelectedBricks([]);
-    } else {
-      setSelectedBricks([...availableBricks]);
-    }
-  };
+    const medicosData = selectedEntities
+      .filter((e) => e.type === 'medico')
+      .map((e) => {
+        const medico = doctors.data.find((m) => m.id === e.id);
+        return medico ? { type: 'medico' as const, data: medico } : null;
+      })
+      .filter((item): item is { type: 'medico'; data: typeof doctors.data[0] } => item !== null);
+
+    return {
+      all: [...farmaciasData, ...medicosData],
+      farmaciasCount: farmaciasData.length,
+      medicosCount: medicosData.length,
+    };
+  }, [selectedEntities, pharmacies.data, doctors.data]);
 
   // Show loading state
-  if (loading) {
+  if (doctors.loading || doctors.loading) {
     return (
       <Box
         sx={{
@@ -135,42 +163,13 @@ function App() {
   }
 
   // Show error state
-  if (error) {
-    const isAuthError = error.includes('Not authenticated') || error.includes('Failed to initialize Google API');
+  if (doctors.error || pharmacies.error) {
+    const errors = [
+      doctors.error && `Doctores: ${doctors.error}`,
+      pharmacies.error && `Farmacias: ${pharmacies.error}`,
+    ].filter((error): error is string => !!error);
 
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-        }}
-      >
-        <Stack spacing={2} alignItems="center" sx={{ textAlign: 'center', maxWidth: 600, px: 2 }}>
-          <Typography variant="h5" color="error">
-            Error al Cargar Datos
-          </Typography>
-          <Alert severity="error" sx={{ width: '100%' }}>
-            {error}
-          </Alert>
-          {isAuthError && (
-            <GoogleAuth onAuthStateChange={(isAuth) => {
-              if (isAuth) {
-                window.location.reload();
-              }
-            }} />
-          )}
-          <Button
-            variant="contained"
-            onClick={() => window.location.reload()}
-            startIcon={<RefreshIcon />}
-          >
-            Reintentar
-          </Button>
-        </Stack>
-      </Box>
-    );
+    return <ErrorState errors={errors} />;
   }
 
   return (
@@ -187,90 +186,7 @@ function App() {
         </Box>
 
         {/* Brick Filter */}
-        {availableBricks.length > 0 && (
-          <Paper sx={{ p: 2 }}>
-            <Stack spacing={2}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  Filtrar por Brick:
-                </Typography>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={handleSelectAll}
-                  >
-                    {selectedBricks.length === availableBricks.length ? 'Deseleccionar Todo' : 'Seleccionar Todo'}
-                  </Button>
-                  {selectedBricks.length > 0 && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="error"
-                      onClick={() => setSelectedBricks([])}
-                    >
-                      Limpiar Filtro
-                    </Button>
-                  )}
-                </Stack>
-              </Box>
-
-              <Paper
-                variant="outlined"
-                sx={{
-                  maxHeight: 300,
-                  overflowY: 'auto',
-                  p: 1.5,
-                }}
-              >
-                <FormGroup>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 0.5,
-                    }}
-                  >
-                    {availableBricks.map(brick => {
-                      const isNoBrick = brick === NO_BRICK;
-                      const isSelected = selectedBricks.includes(brick);
-                      return (
-                        <FormControlLabel
-                          key={brick}
-                          sx={{ m: 0, px: .3 , height: 'fit-content', border: '1px solid lightgrey' }}
-                          control={
-                            <Checkbox
-                              checked={isSelected}
-                              onChange={() => handleBrickToggle(brick)}
-                              size="small"
-                            />
-                          }
-                          label={
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontStyle: isNoBrick ? 'italic' : 'normal',
-                                color: isNoBrick ? 'text.secondary' : 'text.primary',
-                              }}
-                            >
-                              {brick}
-                            </Typography>
-                          }
-                        />
-                      );
-                    })}
-                  </Box>
-                </FormGroup>
-              </Paper>
-
-              <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-                {selectedBricks.length > 0
-                  ? `${selectedBricks.length} de ${availableBricks.length} brick${selectedBricks.length !== 1 ? 's' : ''} seleccionado${selectedBricks.length !== 1 ? 's' : ''}`
-                  : `${availableBricks.length} brick${availableBricks.length !== 1 ? 's' : ''} disponible${availableBricks.length !== 1 ? 's' : ''} - selecciona para filtrar`}
-              </Typography>
-            </Stack>
-          </Paper>
-        )}
+        <BrickFilter bricks={availableBricks} value={selectedBricks} onChange={setSelectedBricks} />
 
         {/* Visibility Toggles */}
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3 }}>
@@ -283,7 +199,9 @@ function App() {
               />
             }
             label={
-              <Typography sx={{ fontWeight: showFarmacias ? 'bold' : 'normal', color: 'success.main' }}>
+              <Typography
+                sx={{ fontWeight: showFarmacias ? 'bold' : 'normal', color: 'success.main' }}
+              >
                 ● Farmacias
               </Typography>
             }
@@ -297,7 +215,9 @@ function App() {
               />
             }
             label={
-              <Typography sx={{ fontWeight: showMedicos ? 'bold' : 'normal', color: 'primary.main' }}>
+              <Typography
+                sx={{ fontWeight: showMedicos ? 'bold' : 'normal', color: 'primary.main' }}
+              >
                 ● Médicos
               </Typography>
             }
@@ -307,21 +227,73 @@ function App() {
         {/* Stats */}
         <Stack spacing={1} alignItems="center">
           <Typography variant="body2" color="text.secondary">
-            {farmacias.length} farmacia{farmacias.length !== 1 ? 's' : ''} • {medicos.length} médico{medicos.length !== 1 ? 's' : ''} cargado{(farmacias.length + medicos.length) !== 1 ? 's' : ''}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Mostrando {filteredFarmacias.length} farmacia{filteredFarmacias.length !== 1 ? 's' : ''} y{' '}
-            {filteredMedicos.length} médico{filteredMedicos.length !== 1 ? 's' : ''}
+            Mostrando ({filteredFarmacias.length}/{pharmacies.data.length}) farmacia
+            {filteredFarmacias.length !== 1 ? 's' : ''} y ({filteredMedicos.length}/
+            {doctors.data.length}) médico{filteredMedicos.length !== 1 ? 's' : ''}
           </Typography>
         </Stack>
 
         {/* Map */}
         <Box>
-          <MapView farmacias={filteredFarmacias} medicos={filteredMedicos} />
+          <MapView
+            farmacias={filteredFarmacias}
+            medicos={filteredMedicos}
+            selectedEntities={selectedEntities}
+            onToggleSelection={toggleEntitySelection}
+          />
         </Box>
+
+        {/* Selected Entities Table */}
+        {selectedEntitiesWithData.all.length > 0 && (
+          <Box>
+            <Typography variant="h5" component="h2" gutterBottom>
+              Seleccionados ({selectedEntitiesWithData.farmaciasCount} farmacia
+              {selectedEntitiesWithData.farmaciasCount !== 1 ? 's' : ''},{' '}
+              {selectedEntitiesWithData.medicosCount} médico
+              {selectedEntitiesWithData.medicosCount !== 1 ? 's' : ''})
+            </Typography>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Tipo</TableCell>
+                    <TableCell>Nombre</TableCell>
+                    <TableCell>Google Maps</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {selectedEntitiesWithData.all.map((item) => (
+                    <TableRow key={`${item.type}-${item.data.id}`}>
+                      <TableCell>
+                        <Typography
+                          sx={{
+                            color: item.type === 'farmacia' ? 'success.main' : 'primary.main',
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          {item.type === 'farmacia' ? '● Farmacia' : '● Médico'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{item.data.nombreCuenta || 'Sin nombre'}</TableCell>
+                      <TableCell>
+                        <Link
+                          href={item.data.googleMapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Ver en Maps
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        )}
       </Stack>
     </Container>
-  )
+  );
 }
 
-export default App
+export default App;
