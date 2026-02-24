@@ -115,28 +115,41 @@ function App() {
     });
   }, [doctors.data, selectedBricks, showMedicos]);
 
-  // Get full entity data for selected entities (farmacias first, then medicos)
+  // Get full entity data for selected entities (in selection order)
   const selectedEntitiesWithData = useMemo(() => {
-    const farmaciasData = selectedEntities
-      .filter((e) => e.type === 'farmacia')
-      .map((e) => {
-        const farmacia = pharmacies.data.find((f) => f.id === e.id);
-        return farmacia ? { type: 'farmacia' as const, data: farmacia } : null;
-      })
-      .filter((item): item is { type: 'farmacia'; data: typeof pharmacies.data[0] } => item !== null);
+    let farmaciasCount = 0;
+    let medicosCount = 0;
 
-    const medicosData = selectedEntities
-      .filter((e) => e.type === 'medico')
+    const allData = selectedEntities
       .map((e) => {
-        const medico = doctors.data.find((m) => m.id === e.id);
-        return medico ? { type: 'medico' as const, data: medico } : null;
+        if (e.type === 'farmacia') {
+          const farmacia = pharmacies.data.find((f) => f.id === e.id);
+          if (farmacia) {
+            farmaciasCount++;
+            return { type: 'farmacia' as const, data: farmacia };
+          }
+        } else {
+          const medico = doctors.data.find((m) => m.id === e.id);
+          if (medico) {
+            medicosCount++;
+            return { type: 'medico' as const, data: medico };
+          }
+        }
+        return null;
       })
-      .filter((item): item is { type: 'medico'; data: typeof doctors.data[0] } => item !== null);
+      .filter(
+        (
+          item
+        ): item is {
+          type: 'farmacia' | 'medico';
+          data: (typeof pharmacies.data)[0] | (typeof doctors.data)[0];
+        } => item !== null
+      );
 
     return {
-      all: [...farmaciasData, ...medicosData],
-      farmaciasCount: farmaciasData.length,
-      medicosCount: medicosData.length,
+      all: allData,
+      farmaciasCount,
+      medicosCount,
     };
   }, [selectedEntities, pharmacies.data, doctors.data]);
 
@@ -256,25 +269,26 @@ function App() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Tipo</TableCell>
+                    <TableCell>Índice</TableCell>
                     <TableCell>Nombre</TableCell>
+                    <TableCell>Especialidad</TableCell>
+                    <TableCell>Calle</TableCell>
+                    <TableCell>Colonia</TableCell>
+                    <TableCell>Brick</TableCell>
                     <TableCell>Google Maps</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {selectedEntitiesWithData.all.map((item) => (
+                  {selectedEntitiesWithData.all.map((item, index) => (
                     <TableRow key={`${item.type}-${item.data.id}`}>
-                      <TableCell>
-                        <Typography
-                          sx={{
-                            color: item.type === 'farmacia' ? 'success.main' : 'primary.main',
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          {item.type === 'farmacia' ? '● Farmacia' : '● Médico'}
-                        </Typography>
-                      </TableCell>
+                      <TableCell>{index + 1}</TableCell>
                       <TableCell>{item.data.nombreCuenta || 'Sin nombre'}</TableCell>
+                      <TableCell>
+                        {item.type === 'medico' ? item.data.especialidad || '-' : ''}
+                      </TableCell>
+                      <TableCell>{item.data.calle || '-'}</TableCell>
+                      <TableCell>{item.data.colonia || '-'}</TableCell>
+                      <TableCell>{item.data.nombreBrick || '-'}</TableCell>
                       <TableCell>
                         <Link
                           href={item.data.googleMapsUrl}

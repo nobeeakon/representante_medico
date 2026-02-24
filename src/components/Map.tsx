@@ -255,11 +255,7 @@ export function MapView({
         }
 
         return (
-          <Marker
-            key={`location-${index}`}
-            position={[location.lat, location.lng]}
-            icon={icon}
-          >
+          <Marker key={`location-${index}`} position={[location.lat, location.lng]} icon={icon}>
             <Popup maxWidth={300}>
               <div className="popup-container">
                 {/* Render all farmacias at this location */}
@@ -288,9 +284,7 @@ export function MapView({
                             : ''}
                         </h3>
                         <button
-                          onClick={() =>
-                            onToggleSelection?.({ type: 'farmacia', id: farmacia.id })
-                          }
+                          onClick={() => onToggleSelection?.({ type: 'farmacia', id: farmacia.id })}
                           style={{
                             padding: '4px 8px',
                             fontSize: '12px',
@@ -312,7 +306,11 @@ export function MapView({
                       {farmacia.calle && (
                         <p className="popup-field">
                           <strong>Dirección:</strong> {farmacia.calle} {'  '}
-                          <a href={farmacia.googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                          <a
+                            href={farmacia.googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             ( Maps )
                           </a>
                         </p>
@@ -353,9 +351,7 @@ export function MapView({
                         </h3>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <button
-                            onClick={() =>
-                              onToggleSelection?.({ type: 'medico', id: medico.id })
-                            }
+                            onClick={() => onToggleSelection?.({ type: 'medico', id: medico.id })}
                             style={{
                               padding: '4px 8px',
                               fontSize: '12px',
@@ -368,7 +364,6 @@ export function MapView({
                           >
                             {isMedicoSelected ? 'Deseleccionar' : 'Seleccionar'}
                           </button>
-                      
                         </div>
                       </div>
                       {medico.nombreCuenta && (
