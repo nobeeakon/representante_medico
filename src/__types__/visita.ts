@@ -4,7 +4,7 @@ type ProductoInformation = {
 };
 
 
-type VisitaStatus = 'pleaneado'| 'visitado' |'noEncontrado';
+export type VisitaStatus = 'planeado' | 'visitado' | 'noEncontrado';
 
 export type Visita = {
   id: string;

@@ -113,7 +113,7 @@ export function SelectedEntitiesTable({ entities, defaultRows, onUpdateEntities 
           fechaVisitaPlaneada: `${dateString}T${timeString}`,
           entidadObjetivoTipo: entity.type,
           entidadObjetivoId: entity.data.id,
-          estatus: 'pleaneado' as const,
+          estatus: 'planeado' as const,
           productoJson: [],
         };
       });

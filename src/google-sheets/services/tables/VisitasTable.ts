@@ -1,4 +1,4 @@
-import type { Visita } from '../../../__types__/visita';
+import type { Visita, VisitaStatus } from '../../../__types__/visita';
 import { BaseTable } from './BaseTable';
 
 type Columns = keyof Visita;
@@ -24,16 +24,38 @@ export class VisitasTable extends BaseTable<Visita> {
   ];
 
   /**
+   * Validates estatus value with exhaustive check
+   */
+  private validateEstatus(value: string): value is VisitaStatus {
+    const tmpValue = value as VisitaStatus;
+    switch (tmpValue) {
+      case 'planeado':
+      case 'visitado':
+      case 'noEncontrado':
+        return true;
+      default: {
+        const exhaustive: never = tmpValue;
+        console.error(
+          `Invalid estatus value: "${exhaustive}". Expected one of: pleaneado, visitado, noEncontrado`
+        );
+        return false;
+      }
+    }
+  }
+
+  /**
    * Convert spreadsheet row to Visita object
    */
   protected rowToObject(row: string[]): Visita {
+    const estatus = row[5] || ''
+
     return {
       id: row[0] || '',
       createdAt: row[1] || '',
       fechaVisita: row[2] || undefined,
       entidadObjetivoTipo: row[3] || '',
       entidadObjetivoId: row[4] || '',
-      estatus: row[5] || '',
+      estatus: this.validateEstatus(estatus)?estatus:'planeado' as const,
       etiquetasIds: row[6] ? JSON.parse(row[6]) : undefined,
       nota: row[7] || undefined,
       productoJson: row[8] ? JSON.parse(row[8]) : [],
