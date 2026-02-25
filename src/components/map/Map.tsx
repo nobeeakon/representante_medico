@@ -1,9 +1,20 @@
+import { useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { Icon, divIcon } from 'leaflet';
-import type { Farmacia } from '../__types__/pharmacy';
-import type { Medico } from '../__types__/doctor';
+import type { Icon, DivIcon } from 'leaflet';
+import type { Farmacia } from '../../__types__/pharmacy';
+import type { Medico } from '../../__types__/doctor';
 import 'leaflet/dist/leaflet.css';
 import './Map.css';
+import {
+  farmaciaIcon,
+  farmaciaSelectedIcon,
+  farmaciaHighlightedIcon,
+  medicoIcon,
+  medicoSelectedIcon,
+  medicoHighlightedIcon,
+  createCombinedIcon,
+  createGroupedIcon,
+} from './icons';
 
 type SelectedEntity = {
   type: 'farmacia' | 'medico';
@@ -16,7 +27,8 @@ interface MapProps {
   center?: [number, number];
   zoom?: number;
   selectedEntities?: SelectedEntity[];
-  onToggleSelection?: (entity: SelectedEntity) => void;
+  highlightedEntity?: SelectedEntity | null;
+  onToggleSelection?: (entities: SelectedEntity[]) => void;
 }
 
 // Combined location type for markers at the same coordinates
@@ -27,115 +39,13 @@ interface CombinedLocation {
   medicos: Medico[];
 }
 
-// Custom icons for different marker types (standard pins)
-const farmaciaIcon = new Icon({
-  iconUrl:
-    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const farmaciaSelectedIcon = new Icon({
-  iconUrl:
-    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const medicoIcon = new Icon({
-  iconUrl:
-    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const medicoSelectedIcon = new Icon({
-  iconUrl:
-    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-/**
- * Creates a square icon for locations with both farmacias and medicos
- * Uses a split color design: green (left) for farmacias, blue (right) for medicos
- */
-function createCombinedIcon(isSelected = false) {
-  const colors = isSelected
-    ? { left: '#f59e0b', right: '#f59e0b' } // Gold for selected
-    : { left: '#059669', right: '#2563eb' }; // Green and blue for normal
-
-  return divIcon({
-    html: `
-      <div style="
-        width: 32px;
-        height: 32px;
-        background: linear-gradient(90deg, ${colors.left} 50%, ${colors.right} 50%);
-        border: 3px solid white;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      ">
-        <span style="
-          font-size: 20px;
-          color: white;
-          text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-        ">●</span>
-      </div>
-    `,
-    className: '',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -16],
-  });
-}
-
-/**
- * Creates a circular badge icon for grouped locations
- * @param count - Number of entities at this location
- * @param color - Background color (green for farmacias, blue for medicos)
- * @param isSelected - Whether any entity at this location is selected
- */
-function createGroupedIcon(count: number, color: 'green' | 'blue', isSelected = false) {
-  const bgColor = isSelected ? '#f59e0b' : color === 'green' ? '#059669' : '#2563eb';
-
-  return divIcon({
-    html: `
-      <div style="
-        width: 36px;
-        height: 36px;
-        background-color: ${bgColor};
-        border: 3px solid white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 16px;
-        color: white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      ">${count}</div>
-    `,
-    className: '',
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    popupAnchor: [0, -18],
-  });
-}
+// Prepared marker data ready for rendering
+type MarkerData = {
+  location: CombinedLocation;
+  icon: Icon | DivIcon;
+  isSelected: boolean;
+  isHighlighted: boolean;
+};
 
 /**
  * Groups farmacias and medicos by their coordinates
@@ -201,63 +111,149 @@ export function MapView({
   center = [20.579117, -100.399349],
   zoom = 11,
   selectedEntities = [],
+  highlightedEntity = null,
   onToggleSelection,
 }: MapProps) {
-  // Group markers by location to handle overlapping coordinates
-  const locationMap = groupByLocation(farmacias, medicos);
-  const locations = Array.from(locationMap.values());
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
+
+  // Prepare marker data with icons based on location composition and selection state
+  const markers = useMemo(() => {
+    const locationMap = groupByLocation(farmacias, medicos);
+    const locations = Array.from(locationMap.values());
+
+    return locations.map((location): MarkerData => {
+      const hasFarmacias = location.farmacias.length > 0;
+      const hasMedicos = location.medicos.length > 0;
+      const hasMultipleFarmacias = location.farmacias.length > 1;
+      const hasMultipleMedicos = location.medicos.length > 1;
+
+      // Check if any entity at this location is selected
+      const hasSelectedFarmacia = location.farmacias.some((f) =>
+        selectedEntities.some((e) => e.type === 'farmacia' && e.id === f.id)
+      );
+      const hasSelectedMedico = location.medicos.some((m) =>
+        selectedEntities.some((e) => e.type === 'medico' && e.id === m.id)
+      );
+      const isSelected = hasSelectedFarmacia || hasSelectedMedico;
+
+      // Check if any entity at this location is highlighted
+      const hasHighlightedFarmacia =
+        highlightedEntity &&
+        highlightedEntity.type === 'farmacia' &&
+        location.farmacias.some((f) => f.id === highlightedEntity.id);
+      const hasHighlightedMedico =
+        highlightedEntity &&
+        highlightedEntity.type === 'medico' &&
+        location.medicos.some((m) => m.id === highlightedEntity.id);
+      const isHighlighted = !!(hasHighlightedFarmacia || hasHighlightedMedico);
+
+      // Determine which icon to use based on what's at this location
+      let icon: Icon | DivIcon;
+
+      // Mixed types at the same location (both farmacias and medicos) - use square split icon
+      if (hasFarmacias && hasMedicos) {
+        icon = createCombinedIcon(isSelected, isHighlighted);
+      }
+      // Multiple farmacias - use green circular badge
+      else if (hasMultipleFarmacias) {
+        icon = createGroupedIcon(location.farmacias.length, 'green', isSelected, isHighlighted);
+      }
+      // Multiple medicos - use blue circular badge
+      else if (hasMultipleMedicos) {
+        icon = createGroupedIcon(location.medicos.length, 'blue', isSelected, isHighlighted);
+      }
+      // Single medico - use blue pin
+      else if (hasMedicos) {
+        if (isHighlighted) {
+          icon = medicoHighlightedIcon;
+        } else {
+          icon = isSelected ? medicoSelectedIcon : medicoIcon;
+        }
+      }
+      // Single farmacia - use green pin (default)
+      else {
+        if (isHighlighted) {
+          icon = farmaciaHighlightedIcon;
+        } else {
+          icon = isSelected ? farmaciaSelectedIcon : farmaciaIcon;
+        }
+      }
+
+      return { location, icon, isSelected, isHighlighted };
+    });
+  }, [farmacias, medicos, selectedEntities, highlightedEntity]);
+
+  // Filter markers if "show only selected" is enabled
+  const filteredMarkers = useMemo(() => {
+    if (!showOnlySelected) return markers;
+    return markers.filter((marker) => marker.isSelected);
+  }, [markers, showOnlySelected]);
 
   return (
-    <MapContainer center={center} zoom={zoom} style={{ height: '600px', width: '100%' }}>
+    <div style={{ position: 'relative' }}>
+      {/* Filter Button */}
+      {selectedEntities.length > 0 && <button
+        onClick={() => setShowOnlySelected(!showOnlySelected)}
+        style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          zIndex: 1000,
+          padding: '8px 16px',
+          fontSize: '14px',
+          fontWeight: 500,
+          cursor: 'pointer',
+          backgroundColor: showOnlySelected ? '#2563eb' : 'white',
+          color: showOnlySelected ? 'white' : '#374151',
+          border: '2px solid #e5e7eb',
+          borderRadius: '6px',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        {showOnlySelected ? 'Mostrar Todos' : 'Solo Seleccionados'}
+      </button>
+      }
+      <MapContainer center={center} zoom={zoom} style={{ height: '600px', width: '100%' }}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {/* Render combined markers for each unique location */}
-      {locations.map((location, index) => {
-        const hasFarmacias = location.farmacias.length > 0;
-        const hasMedicos = location.medicos.length > 0;
-        const hasMultipleFarmacias = location.farmacias.length > 1;
-        const hasMultipleMedicos = location.medicos.length > 1;
-
-        // Check if any entity at this location is selected
-        const hasSelectedFarmacia = location.farmacias.some((f) =>
-          selectedEntities.some((e) => e.type === 'farmacia' && e.id === f.id)
-        );
-        const hasSelectedMedico = location.medicos.some((m) =>
-          selectedEntities.some((e) => e.type === 'medico' && e.id === m.id)
-        );
-        const isSelected = hasSelectedFarmacia || hasSelectedMedico;
-
-        // Determine which icon to use based on what's at this location
-        let icon;
-
-        // Mixed types at the same location (both farmacias and medicos) - use square split icon
-        if (hasFarmacias && hasMedicos) {
-          icon = createCombinedIcon(isSelected);
-        }
-        // Multiple farmacias - use green circular badge
-        else if (hasMultipleFarmacias) {
-          icon = createGroupedIcon(location.farmacias.length, 'green', isSelected);
-        }
-        // Multiple medicos - use blue circular badge
-        else if (hasMultipleMedicos) {
-          icon = createGroupedIcon(location.medicos.length, 'blue', isSelected);
-        }
-        // Single medico - use blue pin
-        else if (hasMedicos) {
-          icon = isSelected ? medicoSelectedIcon : medicoIcon;
-        }
-        // Single farmacia - use green pin (default)
-        else {
-          icon = isSelected ? farmaciaSelectedIcon : farmaciaIcon;
-        }
+      {/* Render markers with prepared data */}
+      {filteredMarkers.map((marker, index) => {
+        const { location, icon } = marker;
 
         return (
           <Marker key={`location-${index}`} position={[location.lat, location.lng]} icon={icon}>
             <Popup maxWidth={300}>
               <div className="popup-container">
+                {/* Select All Button */}
+                {(location.farmacias.length + location.medicos.length > 1) && (
+                  <div style={{ marginBottom: '12px', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>
+                    <button
+                      onClick={() => {
+                        const allEntities: SelectedEntity[] = [
+                          ...location.farmacias.map(f => ({ type: 'farmacia' as const, id: f.id })),
+                          ...location.medicos.map(m => ({ type: 'medico' as const, id: m.id }))
+                        ];
+                        onToggleSelection?.(allEntities);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        backgroundColor: '#6366f1',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        width: '100%',
+                      }}
+                    >
+                      Seleccionar Todos ({location.farmacias.length + location.medicos.length})
+                    </button>
+                  </div>
+                )}
                 {/* Render all farmacias at this location */}
                 {location.farmacias.map((farmacia, farmaciaIndex) => {
                   const isLastItem =
@@ -270,11 +266,6 @@ export function MapView({
                     <div
                       key={`farmacia-${farmaciaIndex}`}
                       className={isLastItem ? '' : 'popup-item'}
-                      style={{
-                        backgroundColor: isFarmaciaSelected ? '#fef3c7' : 'transparent',
-                        padding: isFarmaciaSelected ? '8px' : '0',
-                        borderRadius: '4px',
-                      }}
                     >
                       <div className="popup-title">
                         <h3>
@@ -284,7 +275,7 @@ export function MapView({
                             : ''}
                         </h3>
                         <button
-                          onClick={() => onToggleSelection?.({ type: 'farmacia', id: farmacia.id })}
+                          onClick={() => onToggleSelection?.([{ type: 'farmacia', id: farmacia.id }])}
                           style={{
                             padding: '4px 8px',
                             fontSize: '12px',
@@ -336,11 +327,6 @@ export function MapView({
                     <div
                       key={`medico-${medicoIndex}`}
                       className={isLastItem ? '' : 'popup-item'}
-                      style={{
-                        backgroundColor: isMedicoSelected ? '#fef3c7' : 'transparent',
-                        padding: isMedicoSelected ? '8px' : '0',
-                        borderRadius: '4px',
-                      }}
                     >
                       <div className="popup-title">
                         <h3>
@@ -351,7 +337,7 @@ export function MapView({
                         </h3>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <button
-                            onClick={() => onToggleSelection?.({ type: 'medico', id: medico.id })}
+                            onClick={() => onToggleSelection?.([{ type: 'medico', id: medico.id }])}
                             style={{
                               padding: '4px 8px',
                               fontSize: '12px',
@@ -398,5 +384,6 @@ export function MapView({
         );
       })}
     </MapContainer>
+    </div>
   );
 }

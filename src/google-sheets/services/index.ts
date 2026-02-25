@@ -35,6 +35,7 @@ export async function initializeSheet(): Promise<string> {
 export type TableOperations<T extends { id: string; createdAt: string }> = {
   read: () => Promise<T[]>;
   write: (data: Omit<T, 'id' | 'createdAt'>) => Promise<T>;
+  batchWrite: (dataArray: Array<Omit<T, 'id' | 'createdAt'>>) => Promise<T[]>;
   update: (index: number, data: T) => Promise<void>;
 };
 
@@ -57,6 +58,14 @@ function createTableOperations<T extends { id: string; createdAt: string }>(
         );
       }
       return table.write(currentSheetId, data);
+    },
+    batchWrite: async (dataArray) => {
+      if (!currentSheetId) {
+        throw new Error(
+          'No sheet id found. Something went wrong. Remember to initialize the sheet before trying to do any operation'
+        );
+      }
+      return table.batchWrite(currentSheetId, dataArray);
     },
     update: async (index, data) => {
       if (!currentSheetId) {

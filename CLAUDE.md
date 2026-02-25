@@ -14,7 +14,7 @@ The application uses Google Sheets as its database layer. A single spreadsheet (
 
 - **farmacias** - Pharmacy data (24 columns including contact info, location, credentials, and geographic data)
 - **medicos** - Doctor data (16 columns including contact info, location, specialty, and geographic data)
-- **visitas** - Visit data (9 columns including visit date, entity reference, status, labels, and notes)
+- **visitas** - Visit data (10 columns including visit date, entity reference, status, labels, and notes)
 - **labels** - Label data (4 columns including label type and name)
 
 ### Authentication Flow
@@ -52,7 +52,7 @@ User Action → React Component → Query Hook (useLabelsQuery, etc.)
      - `rowToObject()` - Abstract method for deserializing row data
      - `objectToRow()` - Abstract method for serializing objects
    - **LabelsTable.ts** - Extends BaseTable for label data (4 columns)
-   - **VisitasTable.ts** - Extends BaseTable for visit data (9 columns)
+   - **VisitasTable.ts** - Extends BaseTable for visit data (10 columns)
    - **MedicosTable.ts** - Extends BaseTable for doctor data (16 columns)
    - **FarmaciasTable.ts** - Extends BaseTable for pharmacy data (24 columns)
 
@@ -94,10 +94,10 @@ estatus, codigoPostal, nombreCuenta, especialidad, nombreBrick,
 lat, lng, googleMapsUrl
 ```
 
-**Visitas Columns** (9 columns):
+**Visitas Columns** (10 columns):
 ```
 id, createdAt, fechaVisita, entidadObjetivoTipo, entidadObjetivoId,
-estatus, etiquetasIds, nota
+estatus, etiquetasIds, nota, productoJson, fechaVisitaPlaneada
 ```
 
 **Labels Columns** (4 columns):
@@ -500,13 +500,18 @@ The new table will be automatically created in the Google Sheet with the appropr
 When modifying table structure (adding/removing columns):
 
 1. **Update the type definition** in `src/__types__/`
-2. **Update the headers array** in the table class
+2. **Update the headers array** in the table class - **ALWAYS add new columns to the END**
 3. **Update rowToObject()** to handle the new column mapping
 4. **Update objectToRow()** to serialize the new field
 5. **Update sheet initialization** in googleSheetsService.ts to include new headers
-6. **Consider migration** - Existing sheets won't have new columns automatically
+6. **Update CLAUDE.md** to reflect the new column count and column list in the "Sheet Structure" section
+7. **Consider migration** - Existing sheets won't have new columns automatically
 
-**Important:** The order of fields in `headers`, `rowToObject`, and `objectToRow` must match exactly. Index `N` in `headers` corresponds to `row[N]` and position `N` in the returned array.
+**Critical Rules:**
+- **New columns MUST be added to the END of the table** - Never insert columns in the middle, as this will break existing data
+- **Whenever a type definition is updated, the corresponding table class MUST be updated** - Type and table must stay in sync
+- The order of fields in `headers`, `rowToObject`, and `objectToRow` must match exactly
+- Index `N` in `headers` corresponds to `row[N]` and position `N` in the returned array
 
 ## Entry Points
 

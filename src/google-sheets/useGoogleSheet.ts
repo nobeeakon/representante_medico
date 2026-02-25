@@ -86,6 +86,22 @@ const hookFactory = <DataType extends BasicDataType>(dataOperations: TableOperat
       }
     };
 
+    const batchAdd = async (newItems: Array<Omit<DataType, 'id' | 'createdAt'>>): Promise<DataType[]> => {
+      try {
+        const newRecords = await dataOperations.batchWrite(newItems);
+
+        setState((prev) => ({
+          ...prev,
+          data: [...prev.data, ...newRecords],
+        }));
+
+        return newRecords;
+      } catch (err) {
+        console.error('Error batch adding records:', err);
+        throw err;
+      }
+    };
+
     const updateItem = async (
       id: string,
       data: Partial<Omit<DataType, 'id' | 'createdAt'>>
@@ -118,6 +134,7 @@ const hookFactory = <DataType extends BasicDataType>(dataOperations: TableOperat
       loading: state.status === 'loading',
       error: state.error,
       add,
+      batchAdd,
       updateItem,
       reload: loadData,
     };

@@ -7,46 +7,75 @@ import {
   FormControlLabel,
   Stack,
   CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Link,
 } from '@mui/material';
-import { MapView } from './components/Map';
+import { MapView } from './components/map/Map';
 import { ErrorState } from './components/ErrorState';
 import { BrickFilter, NO_BRICK } from './components/BrickFilter';
-import { usePharmaciesQuery, useDoctorsQuery } from './google-sheets/useGoogleSheet';
+import { SelectedEntitiesTable } from './components/SelectedEntitiesTable';
+import { usePharmaciesQuery, useDoctorsQuery, useVisitsQuery } from './google-sheets/useGoogleSheet';
 import { GoogleAuth } from './google-sheets/GoogleAuth';
-
-type SelectedEntity = {
-  type: 'farmacia' | 'medico';
-  id: string;
-};
+import type { Farmacia } from './__types__/pharmacy';
+import type { Medico } from './__types__/doctor';
 
 function App() {
   const pharmacies = usePharmaciesQuery();
   const doctors = useDoctorsQuery();
+  const visits = useVisitsQuery();
   const [selectedBricks, setSelectedBricks] = useState<string[]>([]);
   const [showFarmacias, setShowFarmacias] = useState<boolean>(true);
   const [showMedicos, setShowMedicos] = useState<boolean>(true);
-  const [selectedEntities, setSelectedEntities] = useState<SelectedEntity[]>([]);
+  const [selectedEntities, setSelectedEntities] = useState<
+    Array<
+      | { type: 'farmacia'; data: Farmacia; isHighlighted: boolean }
+      | { type: 'medico'; data: Medico; isHighlighted: boolean }
+    >
+  >([]);
 
-  // Handler to toggle entity selection
-  const toggleEntitySelection = (entity: SelectedEntity) => {
-    setSelectedEntities((prev) => {
-      const isSelected = prev.some((e) => e.type === entity.type && e.id === entity.id);
-      if (isSelected) {
-        // Remove from selection
-        return prev.filter((e) => !(e.type === entity.type && e.id === entity.id));
-      } else {
-        // Add to selection
-        return [...prev, entity];
+  // Handler to toggle entity selection (supports single or multiple entities)
+  const toggleEntitySelection = (entities: Array<{ type: 'farmacia' | 'medico'; id: string }>) => {
+    // Check if all entities in the array are currently selected
+    const allSelected = entities.every((entity) =>
+      selectedEntities.some((e) => e.type === entity.type && e.data.id === entity.id)
+    );
+
+    if (allSelected) {
+      // If all are selected, deselect all
+      setSelectedEntities((prev) =>
+        prev.filter(
+          (e) => !entities.some((entity) => entity.type === e.type && entity.id === e.data.id)
+        )
+      );
+    } else {
+      // If any are not selected, select all that aren't already selected
+      const newEntities: Array<
+        | { type: 'farmacia'; data: Farmacia; isHighlighted: boolean }
+        | { type: 'medico'; data: Medico; isHighlighted: boolean }
+      > = [];
+
+      entities.forEach((entity) => {
+        const isAlreadySelected = selectedEntities.some(
+          (e) => e.type === entity.type && e.data.id === entity.id
+        );
+
+        if (!isAlreadySelected) {
+          if (entity.type === 'farmacia') {
+            const farmacia = pharmacies.data.find((f) => f.id === entity.id);
+            if (farmacia) {
+              newEntities.push({ type: 'farmacia', data: farmacia, isHighlighted: false });
+            }
+          } else {
+            const medico = doctors.data.find((m) => m.id === entity.id);
+            if (medico) {
+              newEntities.push({ type: 'medico', data: medico, isHighlighted: false });
+            }
+          }
+        }
+      });
+
+      if (newEntities.length > 0) {
+        setSelectedEntities((prev) => [...prev, ...newEntities]);
       }
-    });
+    }
   };
 
   // Get unique brick names from both farmacias and medicos
@@ -115,46 +144,9 @@ function App() {
     });
   }, [doctors.data, selectedBricks, showMedicos]);
 
-  // Get full entity data for selected entities (in selection order)
-  const selectedEntitiesWithData = useMemo(() => {
-    let farmaciasCount = 0;
-    let medicosCount = 0;
-
-    const allData = selectedEntities
-      .map((e) => {
-        if (e.type === 'farmacia') {
-          const farmacia = pharmacies.data.find((f) => f.id === e.id);
-          if (farmacia) {
-            farmaciasCount++;
-            return { type: 'farmacia' as const, data: farmacia };
-          }
-        } else {
-          const medico = doctors.data.find((m) => m.id === e.id);
-          if (medico) {
-            medicosCount++;
-            return { type: 'medico' as const, data: medico };
-          }
-        }
-        return null;
-      })
-      .filter(
-        (
-          item
-        ): item is {
-          type: 'farmacia' | 'medico';
-          data: (typeof pharmacies.data)[0] | (typeof doctors.data)[0];
-        } => item !== null
-      );
-
-    return {
-      all: allData,
-      farmaciasCount,
-      medicosCount,
-    };
-  }, [selectedEntities, pharmacies.data, doctors.data]);
 
   // Show loading state
-  if (doctors.loading || doctors.loading) {
+  if (doctors.loading || pharmacies.loading || visits.loading) {
     return (
       <Box
         sx={{
@@ -168,7 +160,7 @@ function App() {
           <CircularProgress size={60} />
           <Typography variant="h5">Cargando datos...</Typography>
           <Typography variant="body1" color="text.secondary">
-            Por favor espera mientras cargamos los datos de farmacias y médicos.
+            Por favor espera mientras cargamos los datos de farmacias, médicos y visitas.
           </Typography>
         </Stack>
       </Box>
@@ -176,10 +168,11 @@ function App() {
   }
 
   // Show error state
-  if (doctors.error || pharmacies.error) {
+  if (doctors.error || pharmacies.error || visits.error) {
     const errors = [
       doctors.error && `Doctores: ${doctors.error}`,
       pharmacies.error && `Farmacias: ${pharmacies.error}`,
+      visits.error && `Visitas: ${visits.error}`,
     ].filter((error): error is string => !!error);
 
     return <ErrorState errors={errors} />;
@@ -251,60 +244,25 @@ function App() {
           <MapView
             farmacias={filteredFarmacias}
             medicos={filteredMedicos}
-            selectedEntities={selectedEntities}
+            selectedEntities={selectedEntities.map((e) => ({ type: e.type, id: e.data.id }))}
+            highlightedEntity={
+              selectedEntities.find((e) => e.isHighlighted)
+                ? {
+                    type: selectedEntities.find((e) => e.isHighlighted)!.type,
+                    id: selectedEntities.find((e) => e.isHighlighted)!.data.id,
+                  }
+                : null
+            }
             onToggleSelection={toggleEntitySelection}
           />
         </Box>
 
         {/* Selected Entities Table */}
-        {selectedEntitiesWithData.all.length > 0 && (
-          <Box>
-            <Typography variant="h5" component="h2" gutterBottom>
-              Seleccionados ({selectedEntitiesWithData.farmaciasCount} farmacia
-              {selectedEntitiesWithData.farmaciasCount !== 1 ? 's' : ''},{' '}
-              {selectedEntitiesWithData.medicosCount} médico
-              {selectedEntitiesWithData.medicosCount !== 1 ? 's' : ''})
-            </Typography>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Índice</TableCell>
-                    <TableCell>Nombre</TableCell>
-                    <TableCell>Especialidad</TableCell>
-                    <TableCell>Calle</TableCell>
-                    <TableCell>Colonia</TableCell>
-                    <TableCell>Brick</TableCell>
-                    <TableCell>Google Maps</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {selectedEntitiesWithData.all.map((item, index) => (
-                    <TableRow key={`${item.type}-${item.data.id}`}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{item.data.nombreCuenta || 'Sin nombre'}</TableCell>
-                      <TableCell>
-                        {item.type === 'medico' ? item.data.especialidad || '-' : ''}
-                      </TableCell>
-                      <TableCell>{item.data.calle || '-'}</TableCell>
-                      <TableCell>{item.data.colonia || '-'}</TableCell>
-                      <TableCell>{item.data.nombreBrick || '-'}</TableCell>
-                      <TableCell>
-                        <Link
-                          href={item.data.googleMapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Ver en Maps
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        )}
+        <SelectedEntitiesTable
+          entities={selectedEntities}
+          defaultRows={15}
+          onUpdateEntities={setSelectedEntities}
+        />
       </Stack>
     </Container>
   );

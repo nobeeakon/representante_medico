@@ -118,6 +118,46 @@ export abstract class BaseTable<T extends { id: string; createdAt: string }> {
   }
 
   /**
+   * Write multiple new records to the table in a single batch operation
+   */
+  async batchWrite(spreadsheetId: string, dataArray: Array<Omit<T, 'id' | 'createdAt'>>): Promise<T[]> {
+    try {
+      await ensureAuthenticated();
+
+      // Validate headers before writing
+      await this.validateHeaders(spreadsheetId);
+
+      // Generate IDs and timestamps for all records
+      const newRecords = dataArray.map((data) => ({
+        id: generateId(),
+        createdAt: new Date().toISOString(),
+        ...data,
+      } as T));
+
+      // Convert all records to rows
+      const rows = newRecords.map((record) => this.objectToRow(record));
+
+      // Write all rows at once
+      await gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${this.tableName}!A:Z`,
+        valueInputOption: 'RAW',
+        resource: {
+          values: rows,
+        },
+      });
+
+      console.log(`${this.tableName} batch write: ${newRecords.length} records written successfully`);
+
+      return newRecords;
+    } catch (error) {
+      console.error(`Error batch writing ${this.tableName}:`, error);
+      const errorMessage = extractErrorMessage(error);
+      throw new Error(`Failed to batch write ${this.tableName}: ${errorMessage}`);
+    }
+  }
+
+  /**
    * Update an existing record in the table
    * @param spreadsheetId - The Google Sheets spreadsheet ID
    * @param index - The 0-based index of the record in the data array

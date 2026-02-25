@@ -20,6 +20,7 @@ export class VisitasTable extends BaseTable<Visita> {
     'etiquetasIds',
     'nota',
     'productoJson',
+    'fechaVisitaPlaneada',
   ];
 
   /**
@@ -29,13 +30,14 @@ export class VisitasTable extends BaseTable<Visita> {
     return {
       id: row[0] || '',
       createdAt: row[1] || '',
-      fechaVisita: row[2] || '',
+      fechaVisita: row[2] || undefined,
       entidadObjetivoTipo: row[3] || '',
       entidadObjetivoId: row[4] || '',
       estatus: row[5] || '',
       etiquetasIds: row[6] ? JSON.parse(row[6]) : undefined,
       nota: row[7] || undefined,
       productoJson: row[8] ? JSON.parse(row[8]) : [],
+      fechaVisitaPlaneada: row[9] || '',
     };
   }
 
@@ -46,13 +48,14 @@ export class VisitasTable extends BaseTable<Visita> {
     return [
       visita.id,
       visita.createdAt,
-      visita.fechaVisita,
+      visita.fechaVisita || '',
       visita.entidadObjetivoTipo,
       visita.entidadObjetivoId,
       visita.estatus,
       visita.etiquetasIds ? JSON.stringify(visita.etiquetasIds) : '',
       visita.nota || '',
       JSON.stringify(visita.productoJson),
+      visita.fechaVisitaPlaneada,
     ];
   }
 }
