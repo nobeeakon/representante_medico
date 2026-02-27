@@ -21,9 +21,13 @@ type SelectedEntity = {
   id: string;
 };
 
+type SavedEntity =
+  | { type: 'farmacia'; data: Farmacia; visitId: string; plannedVisitDate: string; visitDate?: string; status: string }
+  | { type: 'medico'; data: Medico; visitId: string; plannedVisitDate: string; visitDate?: string; status: string };
+
 interface MapProps {
-  farmacias?: Farmacia[];
-  medicos?: Medico[];
+  entities?: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }>;
+  savedEntities?: SavedEntity[];
   center?: [number, number];
   zoom?: number;
   selectedEntities?: SelectedEntity[];
@@ -37,6 +41,7 @@ interface CombinedLocation {
   lng: number;
   farmacias: Farmacia[];
   medicos: Medico[];
+  savedEntityIds: Set<string>; // IDs of entities with saved visits
 }
 
 // Prepared marker data ready for rendering
@@ -48,47 +53,48 @@ type MarkerData = {
 };
 
 /**
- * Groups farmacias and medicos by their coordinates
+ * Groups entities by their coordinates and tracks which have saved visits
  * Returns a map of combined locations keyed by "lat,lng"
  */
-function groupByLocation(farmacias: Farmacia[], medicos: Medico[]): Map<string, CombinedLocation> {
+function groupByLocation(
+  entities: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }>,
+  savedEntities: SavedEntity[]
+): Map<string, CombinedLocation> {
   const locationMap = new Map<string, CombinedLocation>();
 
-  // Add farmacias to the map
-  farmacias.forEach((farmacia) => {
-    if (!farmacia.lat || !farmacia.lng) return;
+  // Create a set of saved entity IDs for quick lookup
+  const savedEntityIds = new Set(savedEntities.map(e => e.data.id));
 
-    const key = `${farmacia.lat},${farmacia.lng}`;
+  entities.forEach((entity) => {
+    const lat = entity.data.lat;
+    const lng = entity.data.lng;
+
+    if (!lat || !lng) return;
+
+    const key = `${lat},${lng}`;
     const existing = locationMap.get(key);
 
     if (existing) {
-      existing.farmacias.push(farmacia);
+      if (entity.type === 'farmacia') {
+        existing.farmacias.push(entity.data as Farmacia);
+      } else {
+        existing.medicos.push(entity.data as Medico);
+      }
+      if (savedEntityIds.has(entity.data.id)) {
+        existing.savedEntityIds.add(entity.data.id);
+      }
     } else {
-      locationMap.set(key, {
-        lat: farmacia.lat,
-        lng: farmacia.lng,
-        farmacias: [farmacia],
-        medicos: [],
-      });
-    }
-  });
-
-  // Add medicos to the map
-  medicos.forEach((medico) => {
-    if (!medico.lat || !medico.lng) return;
-
-    const key = `${medico.lat},${medico.lng}`;
-    const existing = locationMap.get(key);
-
-    if (existing) {
-      existing.medicos.push(medico);
-    } else {
-      locationMap.set(key, {
-        lat: medico.lat,
-        lng: medico.lng,
-        farmacias: [],
-        medicos: [medico],
-      });
+      const newLocation: CombinedLocation = {
+        lat,
+        lng,
+        farmacias: entity.type === 'farmacia' ? [entity.data as Farmacia] : [],
+        medicos: entity.type === 'medico' ? [entity.data as Medico] : [],
+        savedEntityIds: new Set(),
+      };
+      if (savedEntityIds.has(entity.data.id)) {
+        newLocation.savedEntityIds.add(entity.data.id);
+      }
+      locationMap.set(key, newLocation);
     }
   });
 
@@ -98,16 +104,15 @@ function groupByLocation(farmacias: Farmacia[], medicos: Medico[]): Map<string, 
 /**
  * MapView component that displays pharmacies (farmacias) and doctors (medicos) as markers
  *
- * @param farmacias - Array of pharmacy locations
- * @param medicos - Array of doctor locations
+ * @param entities - Array of entities with type and data (farmacias or medicos)
  * @param center - Map center coordinates [lat, lng] (default: [20.579117, -100.399349] - Queretaro, Mexico)
  * @param zoom - Initial zoom level (default: 11)
  * @param selectedEntities - Array of currently selected entities (pharmacies or doctors)
  * @param onToggleSelection - Callback to toggle entity selection
  */
 export function MapView({
-  farmacias = [],
-  medicos = [],
+  entities = [],
+  savedEntities = [],
   center = [20.579117, -100.399349],
   zoom = 11,
   selectedEntities = [],
@@ -118,7 +123,7 @@ export function MapView({
 
   // Prepare marker data with icons based on location composition and selection state
   const markers = useMemo(() => {
-    const locationMap = groupByLocation(farmacias, medicos);
+    const locationMap = groupByLocation(entities, savedEntities);
     const locations = Array.from(locationMap.values());
 
     return locations.map((location): MarkerData => {
@@ -127,12 +132,12 @@ export function MapView({
       const hasMultipleFarmacias = location.farmacias.length > 1;
       const hasMultipleMedicos = location.medicos.length > 1;
 
-      // Check if any entity at this location is selected
+      // Check if any entity at this location is selected or saved (both show as selected/yellow)
       const hasSelectedFarmacia = location.farmacias.some((f) =>
-        selectedEntities.some((e) => e.type === 'farmacia' && e.id === f.id)
+        selectedEntities.some((e) => e.type === 'farmacia' && e.id === f.id) || location.savedEntityIds.has(f.id)
       );
       const hasSelectedMedico = location.medicos.some((m) =>
-        selectedEntities.some((e) => e.type === 'medico' && e.id === m.id)
+        selectedEntities.some((e) => e.type === 'medico' && e.id === m.id) || location.savedEntityIds.has(m.id)
       );
       const isSelected = hasSelectedFarmacia || hasSelectedMedico;
 
@@ -181,7 +186,7 @@ export function MapView({
 
       return { location, icon, isSelected, isHighlighted };
     });
-  }, [farmacias, medicos, selectedEntities, highlightedEntity]);
+  }, [entities, selectedEntities, highlightedEntity, savedEntities]);
 
   // Filter markers if "show only selected" is enabled
   const filteredMarkers = useMemo(() => {
@@ -192,8 +197,9 @@ export function MapView({
   return (
     <div style={{ position: 'relative' }}>
       {/* Filter Button */}
-      {selectedEntities.length > 0 && <button
+       <button
         onClick={() => setShowOnlySelected(!showOnlySelected)}
+        disabled={selectedEntities.length === 0}
         style={{
           position: 'absolute',
           top: '10px',
@@ -212,7 +218,7 @@ export function MapView({
       >
         {showOnlySelected ? 'Mostrar Todos' : 'Solo Seleccionados'}
       </button>
-      }
+    
       <MapContainer center={center} zoom={zoom} style={{ height: '600px', width: '100%' }}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -262,6 +268,7 @@ export function MapView({
                   const isFarmaciaSelected = selectedEntities.some(
                     (e) => e.type === 'farmacia' && e.id === farmacia.id
                   );
+                  const isFarmaciaSaved = location.savedEntityIds.has(farmacia.id);
                   return (
                     <div
                       key={`farmacia-${farmaciaIndex}`}
@@ -273,21 +280,28 @@ export function MapView({
                           {location.farmacias.length > 1
                             ? `(${farmaciaIndex + 1}/${location.farmacias.length})`
                             : ''}
+                          {isFarmaciaSaved && (
+                            <span style={{ marginLeft: '8px', fontSize: '12px', color: '#059669', fontWeight: 'bold' }}>
+                              ✓ Guardada
+                            </span>
+                          )}
                         </h3>
-                        <button
-                          onClick={() => onToggleSelection?.([{ type: 'farmacia', id: farmacia.id }])}
-                          style={{
-                            padding: '4px 8px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            backgroundColor: isFarmaciaSelected ? '#dc2626' : '#059669',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                          }}
-                        >
-                          {isFarmaciaSelected ? 'Deseleccionar' : 'Seleccionar'}
-                        </button>
+                        {!isFarmaciaSaved && (
+                          <button
+                            onClick={() => onToggleSelection?.([{ type: 'farmacia', id: farmacia.id }])}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              backgroundColor: isFarmaciaSelected ? '#dc2626' : '#059669',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                            }}
+                          >
+                            {isFarmaciaSelected ? 'Deseleccionar' : 'Seleccionar'}
+                          </button>
+                        )}
                       </div>
                       {farmacia.nombreCuenta && (
                         <p className="popup-field">
@@ -323,6 +337,7 @@ export function MapView({
                   const isMedicoSelected = selectedEntities.some(
                     (e) => e.type === 'medico' && e.id === medico.id
                   );
+                  const isMedicoSaved = location.savedEntityIds.has(medico.id);
                   return (
                     <div
                       key={`medico-${medicoIndex}`}
@@ -334,23 +349,30 @@ export function MapView({
                           {location.medicos.length > 1
                             ? `(${medicoIndex + 1}/${location.medicos.length})`
                             : ''}
+                          {isMedicoSaved && (
+                            <span style={{ marginLeft: '8px', fontSize: '12px', color: '#2563eb', fontWeight: 'bold' }}>
+                              ✓ Guardado
+                            </span>
+                          )}
                         </h3>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <button
-                            onClick={() => onToggleSelection?.([{ type: 'medico', id: medico.id }])}
-                            style={{
-                              padding: '4px 8px',
-                              fontSize: '12px',
-                              cursor: 'pointer',
-                              backgroundColor: isMedicoSelected ? '#dc2626' : '#2563eb',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                            }}
-                          >
-                            {isMedicoSelected ? 'Deseleccionar' : 'Seleccionar'}
-                          </button>
-                        </div>
+                        {!isMedicoSaved && (
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button
+                              onClick={() => onToggleSelection?.([{ type: 'medico', id: medico.id }])}
+                              style={{
+                                padding: '4px 8px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                backgroundColor: isMedicoSelected ? '#dc2626' : '#2563eb',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                              }}
+                            >
+                              {isMedicoSelected ? 'Deseleccionar' : 'Seleccionar'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                       {medico.nombreCuenta && (
                         <p className="popup-field">

@@ -65,6 +65,7 @@ declare namespace gapi {
             };
             sheets?: Array<{
               properties?: {
+                sheetId?: number;
                 title?: string;
               };
             }>;
@@ -78,6 +79,14 @@ declare namespace gapi {
               addSheet?: {
                 properties: {
                   title: string;
+                };
+              };
+              deleteDimension?: {
+                range: {
+                  sheetId: number;
+                  dimension: 'ROWS' | 'COLUMNS';
+                  startIndex: number;
+                  endIndex: number;
                 };
               };
             }>;

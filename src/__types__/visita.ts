@@ -5,13 +5,15 @@ type ProductoInformation = {
 
 
 export type VisitaStatus = 'planeado' | 'visitado' | 'noEncontrado';
+export type VisitaEntidadObjetivo = 'medico' | 'farmacia';
+
 
 export type Visita = {
   id: string;
   createdAt: string;
   fechaVisita: string | undefined;
   fechaVisitaPlaneada: string;
-  entidadObjetivoTipo: string;
+  entidadObjetivoTipo: VisitaEntidadObjetivo;
   entidadObjetivoId: string;
   estatus: VisitaStatus;
   etiquetasIds?: string[];

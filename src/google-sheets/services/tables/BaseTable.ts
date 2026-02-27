@@ -195,6 +195,61 @@ export abstract class BaseTable<T extends { id: string; createdAt: string }> {
   }
 
   /**
+   * Delete a record from the table
+   * @param spreadsheetId - The Google Sheets spreadsheet ID
+   * @param index - The 0-based index of the record in the data array
+   */
+  async delete(spreadsheetId: string, index: number): Promise<void> {
+    try {
+      await ensureAuthenticated();
+
+      // Validate headers before deleting
+      await this.validateHeaders(spreadsheetId);
+
+      // Calculate actual row number (add 2: 1 for header row, 1 for 0-based index)
+      const rowNumber = index + 2;
+
+      // Get the sheet ID for the table
+      const response = await gapi.client.sheets.spreadsheets.get({
+        spreadsheetId,
+      });
+
+      const sheet = response.result.sheets?.find(
+        (s) => s.properties?.title === this.tableName
+      );
+
+      if (!sheet?.properties?.sheetId) {
+        throw new Error(`Sheet "${this.tableName}" not found in spreadsheet`);
+      }
+
+      // Delete the row using batchUpdate
+      await gapi.client.sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        resource: {
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: sheet.properties.sheetId,
+                  dimension: 'ROWS',
+                  startIndex: rowNumber - 1, // 0-based for API
+                  endIndex: rowNumber, // exclusive
+                },
+              },
+            },
+          ],
+        },
+      });
+
+      console.log(`${this.tableName} record deleted successfully`);
+    } catch (error) {
+      console.error(`Error deleting ${this.tableName}:`, error);
+      const errorMessage = extractErrorMessage(error);
+      throw new Error(`Failed to delete ${this.tableName}: ${errorMessage}`);
+    }
+  }
+
+  /**
    * Get the headers for this table
    */
   getHeaders(): string[] {

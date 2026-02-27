@@ -129,6 +129,28 @@ const hookFactory = <DataType extends BasicDataType>(dataOperations: TableOperat
       }
     };
 
+    const deleteItem = async (id: string): Promise<void> => {
+      try {
+        const targetItem = state.data
+          .map((item, idx) => ({ idx, item }))
+          .find((item) => item.item.id === id);
+
+        if (targetItem == null) {
+          throw new Error(`Unable to find the required item: ${id}`);
+        }
+
+        await dataOperations.delete(targetItem.idx);
+
+        setState((prev) => ({
+          ...prev,
+          data: prev.data.filter((item) => item.id !== id),
+        }));
+      } catch (err) {
+        console.error('Error deleting item:', err);
+        throw err;
+      }
+    };
+
     return {
       data: state.data,
       loading: state.status === 'loading',
@@ -136,6 +158,7 @@ const hookFactory = <DataType extends BasicDataType>(dataOperations: TableOperat
       add,
       batchAdd,
       updateItem,
+      deleteItem,
       reload: loadData,
     };
   };
