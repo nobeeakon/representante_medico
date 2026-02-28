@@ -13,11 +13,13 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 
-export type VisitHistoryFilterType = 'none' | 'never-visited' | 'not-visited-since' | 'visited-within-days' | 'only-not-found';
+export type VisitHistoryFilterType = 'none' | 'never-visited' | 'not-visited-since' | 'visited-within-days' | 'only-not-found' | 'planning-focused';
 
 export type VisitHistoryFilterConfig = {
   type: VisitHistoryFilterType;
   daysSince?: number;
+  daysAhead?: number;
+  daysBack?: number;
 };
 
 type VisitHistoryFilterDialogProps = {
@@ -35,11 +37,15 @@ export function VisitHistoryFilterDialog({
 }: VisitHistoryFilterDialogProps) {
   const [filterType, setFilterType] = useState<VisitHistoryFilterType>(currentFilter.type);
   const [daysSince, setDaysSince] = useState<number>(currentFilter.daysSince ?? 30);
+  const [daysAhead, setDaysAhead] = useState<number>(currentFilter.daysAhead ?? 7);
+  const [daysBack, setDaysBack] = useState<number>(currentFilter.daysBack ?? 30);
 
   const handleApply = () => {
     onApply({
       type: filterType,
       daysSince: (filterType === 'not-visited-since' || filterType === 'visited-within-days') ? daysSince : undefined,
+      daysAhead: filterType === 'planning-focused' ? daysAhead : undefined,
+      daysBack: filterType === 'planning-focused' ? daysBack : undefined,
     });
     onClose();
   };
@@ -82,7 +88,7 @@ export function VisitHistoryFilterDialog({
                     onChange={(e) => setDaysSince(parseInt(e.target.value) || 0)}
                     disabled={filterType !== 'not-visited-since'}
                     sx={{ width: '80px' }}
-                    inputProps={{ min: 1 }}
+                    slotProps={{ htmlInput: { min: 1 } }}
                   />
                   <span>días</span>
                 </Stack>
@@ -101,7 +107,7 @@ export function VisitHistoryFilterDialog({
                     onChange={(e) => setDaysSince(parseInt(e.target.value) || 0)}
                     disabled={filterType !== 'visited-within-days'}
                     sx={{ width: '80px' }}
-                    inputProps={{ min: 1 }}
+                    slotProps={{ htmlInput: { min: 1 } }}
                   />
                   <span>días</span>
                 </Stack>
@@ -111,6 +117,43 @@ export function VisitHistoryFilterDialog({
               value="only-not-found"
               control={<Radio />}
               label="Solo marcadas como 'No encontrado'"
+            />
+            <FormControlLabel
+              value="planning-focused"
+              control={<Radio />}
+              label={
+                <Stack spacing={1.5}>
+                  <Typography variant="body2" fontWeight={500}>
+                    Enfoque en planificación
+                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ pl: 2 }}>
+                    <span>Sin visita planificada en los próximos</span>
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={daysAhead}
+                      onChange={(e) => setDaysAhead(parseInt(e.target.value) || 0)}
+                      disabled={filterType !== 'planning-focused'}
+                      sx={{ width: '80px' }}
+                      slotProps={{ htmlInput: { min: 1 } }}
+                    />
+                    <span>días</span>
+                  </Stack>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ pl: 2 }}>
+                    <span>Y sin visita o plan en los últimos</span>
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={daysBack}
+                      onChange={(e) => setDaysBack(parseInt(e.target.value) || 0)}
+                      disabled={filterType !== 'planning-focused'}
+                      sx={{ width: '80px' }}
+                      slotProps={{ htmlInput: { min: 1 } }}
+                    />
+                    <span>días</span>
+                  </Stack>
+                </Stack>
+              }
             />
           </RadioGroup>
         </Stack>
