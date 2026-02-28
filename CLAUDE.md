@@ -14,7 +14,7 @@ The application uses Google Sheets as its database layer. A single spreadsheet (
 
 - **farmacias** - Pharmacy data (24 columns including contact info, location, credentials, and geographic data)
 - **medicos** - Doctor data (16 columns including contact info, location, specialty, and geographic data)
-- **visitas** - Visit data (10 columns including visit date, entity reference, status, labels, and notes)
+- **visitas** - Visit data (12 columns including visit date, entity reference, status, labels, notes, and product information)
 - **labels** - Label data (4 columns including label type and name)
 
 ### Authentication Flow
@@ -52,7 +52,7 @@ User Action → React Component → Query Hook (useLabelsQuery, etc.)
      - `rowToObject()` - Abstract method for deserializing row data
      - `objectToRow()` - Abstract method for serializing objects
    - **LabelsTable.ts** - Extends BaseTable for label data (4 columns)
-   - **VisitasTable.ts** - Extends BaseTable for visit data (10 columns)
+   - **VisitasTable.ts** - Extends BaseTable for visit data (12 columns)
    - **MedicosTable.ts** - Extends BaseTable for doctor data (16 columns)
    - **FarmaciasTable.ts** - Extends BaseTable for pharmacy data (24 columns)
 
@@ -94,10 +94,11 @@ estatus, codigoPostal, nombreCuenta, especialidad, nombreBrick,
 lat, lng, googleMapsUrl
 ```
 
-**Visitas Columns** (10 columns):
+**Visitas Columns** (12 columns):
 ```
 id, createdAt, fechaVisita, entidadObjetivoTipo, entidadObjetivoId,
-estatus, etiquetasIds, nota, productoJson, fechaVisitaPlaneada
+estatus, etiquetasIds, nota, productoJson, fechaVisitaPlaneada,
+productoSolicitadoJson, productoDejadoJson
 ```
 
 **Labels Columns** (4 columns):

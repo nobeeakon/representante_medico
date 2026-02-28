@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 
-export type VisitHistoryFilterType = 'none' | 'never-visited' | 'not-visited-since' | 'only-not-found';
+export type VisitHistoryFilterType = 'none' | 'never-visited' | 'not-visited-since' | 'visited-within-days' | 'only-not-found';
 
 export type VisitHistoryFilterConfig = {
   type: VisitHistoryFilterType;
@@ -39,7 +39,7 @@ export function VisitHistoryFilterDialog({
   const handleApply = () => {
     onApply({
       type: filterType,
-      daysSince: filterType === 'not-visited-since' ? daysSince : undefined,
+      daysSince: (filterType === 'not-visited-since' || filterType === 'visited-within-days') ? daysSince : undefined,
     });
     onClose();
   };
@@ -81,6 +81,25 @@ export function VisitHistoryFilterDialog({
                     value={daysSince}
                     onChange={(e) => setDaysSince(parseInt(e.target.value) || 0)}
                     disabled={filterType !== 'not-visited-since'}
+                    sx={{ width: '80px' }}
+                    inputProps={{ min: 1 }}
+                  />
+                  <span>días</span>
+                </Stack>
+              }
+            />
+            <FormControlLabel
+              value="visited-within-days"
+              control={<Radio />}
+              label={
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <span>Visitadas en los últimos</span>
+                  <TextField
+                    type="number"
+                    size="small"
+                    value={daysSince}
+                    onChange={(e) => setDaysSince(parseInt(e.target.value) || 0)}
+                    disabled={filterType !== 'visited-within-days'}
                     sx={{ width: '80px' }}
                     inputProps={{ min: 1 }}
                   />

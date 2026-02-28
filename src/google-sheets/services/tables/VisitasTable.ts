@@ -21,6 +21,8 @@ export class VisitasTable extends BaseTable<Visita> {
     'nota',
     'productoJson',
     'fechaVisitaPlaneada',
+    'productoSolicitadoJson',
+    'productoDejadoJson',
   ];
 
   /**
@@ -81,6 +83,8 @@ export class VisitasTable extends BaseTable<Visita> {
       nota: row[7] || undefined,
       productoJson: row[8] ? JSON.parse(row[8]) : [],
       fechaVisitaPlaneada: row[9] || '',
+      productoSolicitadoJson: row[10] ? JSON.parse(row[10]) : undefined,
+      productoDejadoJson: row[11] ? JSON.parse(row[11]) : undefined,
     };
   }
 
@@ -99,6 +103,8 @@ export class VisitasTable extends BaseTable<Visita> {
       visita.nota || '',
       JSON.stringify(visita.productoJson),
       visita.fechaVisitaPlaneada,
+      visita.productoSolicitadoJson ? JSON.stringify(visita.productoSolicitadoJson) : '',
+      visita.productoDejadoJson ? JSON.stringify(visita.productoDejadoJson) : '',
     ];
   }
 }

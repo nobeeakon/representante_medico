@@ -19,4 +19,6 @@ export type Visita = {
   etiquetasIds?: string[];
   nota?: string;
   productoJson: ProductoInformation[];
+  productoSolicitadoJson?: ProductoInformation[];
+  productoDejadoJson?: ProductoInformation[];
 };

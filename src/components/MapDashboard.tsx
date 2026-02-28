@@ -16,10 +16,12 @@ import { BrickFilter, NO_BRICK } from './BrickFilter';
 import { SelectedEntitiesTable } from './SelectedEntitiesTable';
 import { GoogleAuth } from '../google-sheets/GoogleAuth';
 import { CreateEntityDialog } from './CreateEntityDialog';
+import { ManageProductsDialog } from './ManageProductsDialog';
 import { VisitHistoryFilterDialog, type VisitHistoryFilterConfig } from './VisitHistoryFilterDialog';
 import type { Farmacia } from '../__types__/pharmacy';
 import type { Medico } from '../__types__/doctor';
 import type { Visita, VisitaStatus } from '../__types__/visita';
+import type { Producto } from '../__types__/producto';
 import {nonNullable} from '../utils';
 
 
@@ -64,9 +66,10 @@ type MapDashboardProps = {
   pharmaciesQuery: QueryInterface<Farmacia>;
   doctorsQuery: QueryInterface<Medico>;
   visitsQuery: VisitsQuery;
+  productosQuery: QueryInterface<Producto>;
 };
 
-export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery }: MapDashboardProps) {
+export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, productosQuery }: MapDashboardProps) {
   const pharmacies = pharmaciesQuery.data;
   const doctors = doctorsQuery.data;
   const visits = visitsQuery.data;
@@ -89,6 +92,7 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery }: Map
     entityTypeFilter: boolean;
   }>({ brickFilter: false, entityTypeFilter: false });
   const [showCreateEntityDialog, setShowCreateEntityDialog] = useState(false);
+  const [showManageProductsDialog, setShowManageProductsDialog] = useState(false);
   const [showVisitHistoryFilterDialog, setShowVisitHistoryFilterDialog] = useState(false);
   const [visitHistoryFilter, setVisitHistoryFilter] = useState<VisitHistoryFilterConfig>({ type: 'none' });
 
@@ -246,6 +250,32 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery }: Map
         return mostRecentVisit.fechaVisita < thresholdString;
       }
 
+      if (visitHistoryFilter.type === 'visited-within-days') {
+        const daysThreshold = visitHistoryFilter.daysSince ?? 30;
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+        const thresholdString = thresholdDate.toISOString().split('T')[0];
+
+        // No visits at all means it doesn't pass
+        if (entityVisits.length === 0) {
+          return false;
+        }
+
+        // Get the most recent visit date
+        const mostRecentVisit = entityVisits
+          .filter((v) => v.fechaVisita) // Only consider visits with actual visit date
+          .sort((a, b) => (b.fechaVisita ?? '').localeCompare(a.fechaVisita ?? ''))
+          .at(0);
+
+        // If no visits with actual dates, doesn't pass
+        if (!mostRecentVisit || !mostRecentVisit.fechaVisita) {
+          return false;
+        }
+
+        // Check if most recent visit is within the threshold (newer than or equal to threshold)
+        return mostRecentVisit.fechaVisita >= thresholdString;
+      }
+
       return true;
     };
 
@@ -319,6 +349,7 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery }: Map
     await pharmaciesQuery.add(pharmacy);
   };
 
+
   return (
     <Container maxWidth='xl' sx={{ py: 3 }}>
       <Stack spacing={3}>
@@ -341,6 +372,14 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery }: Map
             onClick={() => setShowCreateEntityDialog(true)}
           >
             Entidad
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => setShowManageProductsDialog(true)}
+          >
+            Productos
           </Button>
           <Button
             variant={filterVisibility.brickFilter ? 'contained' : 'outlined'}
@@ -425,6 +464,8 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery }: Map
               {visitHistoryFilter.type === 'never-visited' && '🔍 Filtro: Nunca visitadas'}
               {visitHistoryFilter.type === 'not-visited-since' &&
                 `🔍 Filtro: No visitadas desde hace ${visitHistoryFilter.daysSince} días`}
+              {visitHistoryFilter.type === 'visited-within-days' &&
+                `🔍 Filtro: Visitadas en los últimos ${visitHistoryFilter.daysSince} días`}
               {visitHistoryFilter.type === 'only-not-found' && '🔍 Filtro: Solo marcadas como "No encontrado"'}
             </Typography>
           )}
@@ -465,6 +506,16 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery }: Map
           onSavePharmacy={handleSavePharmacy}
         />
       )}
+
+      {/* Manage Products Dialog */}
+      <ManageProductsDialog
+        open={showManageProductsDialog}
+        onClose={() => setShowManageProductsDialog(false)}
+        productos={productosQuery.data}
+        onAdd={productosQuery.add}
+        onUpdate={productosQuery.updateItem}
+        onDelete={productosQuery.deleteItem}
+      />
 
       {/* Visit History Filter Dialog */}
       <VisitHistoryFilterDialog
