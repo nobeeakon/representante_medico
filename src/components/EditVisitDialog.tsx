@@ -261,7 +261,7 @@ export function EditVisitDialog({
             }
             label="Estatus"
           >
-            <MenuItem value="planeado">Planeado</MenuItem>
+            <MenuItem value="planeado">Programado</MenuItem>
             <MenuItem value="visitado">Visitado</MenuItem>
             <MenuItem value="noEncontrado">No Encontrado</MenuItem>
           </Select>

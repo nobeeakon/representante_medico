@@ -9,7 +9,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Link,
   IconButton,
   Tooltip,
   Button,
@@ -27,6 +26,7 @@ import {
   Add as AddIcon,
   EventRepeat as EventRepeatIcon,
   History as HistoryIcon,
+  Place as PlaceIcon,
 } from '@mui/icons-material';
 import { CreateVisitDialog } from './CreateVisitDialog';
 import { EditVisitDialog } from './EditVisitDialog';
@@ -40,7 +40,7 @@ import type { Visita } from '../__types__/visita';
 
 
 const STATUS_DISPLAY: Record<string, {text: string; color: string; bgColor: string}> = {
-      planeado: { text: 'Planeado', color: '#1976d2', bgColor: '#e3f2fd' },
+      planeado: { text: 'Programado', color: '#1976d2', bgColor: '#e3f2fd' },
     visitado:{ text: 'Visitado', color: '#2e7d32', bgColor: '#e8f5e9' },
     noEncontrado: { text: 'No Encontrado', color: '#d32f2f', bgColor: '#ffebee' },
 }
@@ -388,13 +388,25 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
           onClose={() => setHistoryEntity(null)}
         />
       )}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5" component="h2">
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'center' },
+        gap: 2,
+        mb: 2
+      }}>
+        <Typography variant="h5" component="h2" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
           Seleccionados ({farmaciasCount} farmacia
           {farmaciasCount !== 1 ? 's' : ''}, {medicosCount} médico
           {medicosCount !== 1 ? 's' : ''})
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 1,
+          alignItems: { xs: 'stretch', sm: 'center' }
+        }}>
           <Button
             variant="contained"
             color="success"
@@ -413,7 +425,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
             InputLabelProps={{
               shrink: true,
             }}
-            sx={{ minWidth: 160 }}
+            sx={{ minWidth: { xs: '100%', sm: 160 } }}
           />
           <Button
             variant="contained"
@@ -437,20 +449,19 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
           </Button>
         </Box>
       </Box>
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Índice</TableCell>
-              <TableCell>Hora Planeada</TableCell>
-              <TableCell>Hora</TableCell>
-              <TableCell>Estatus</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Índice</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Hora Planeada</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Hora</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Estatus</TableCell>
               <TableCell>Nombre</TableCell>
-              <TableCell>Especialidad</TableCell>
-              <TableCell>Calle</TableCell>
-              <TableCell>Colonia</TableCell>
-              <TableCell>Brick</TableCell>
-              <TableCell>Google Maps</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Especialidad</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Calle</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Colonia</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Brick</TableCell>
               <TableCell>Acciones</TableCell>
             </TableRow>
           </TableHead>
@@ -464,14 +475,14 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                   key={isSaved ? `saved-${item.visitId}` : `${item.type}-${item.data.id}`}
                   sx={isSaved ? { backgroundColor: '#f0f9ff' } : {}}
                 >
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{index + 1}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     {isSaved ? <TimeDisplay dateString={item.plannedVisitDate} /> : ''}
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     {isSaved ? <TimeDisplay dateString={item.visitDate} /> : ''}
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     <Status
                       isSaved={isSaved}
                       status={isSaved?item.status:null}
@@ -493,24 +504,27 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                       </Tooltip>
                     </Box>
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     {item.type === 'medico' ? item.data.especialidad || '' : ''}
                   </TableCell>
-                  <TableCell>{item.data.calle || ''}</TableCell>
-                  <TableCell>{item.data.colonia || ''}</TableCell>
-                  <TableCell>{item.data.nombreBrick || ''}</TableCell>
-                  <TableCell>
-                    <Link
-                      href={item.data.googleMapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Ver en Maps
-                    </Link>
-                  </TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{item.data.calle || ''}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{item.data.colonia || ''}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{item.data.nombreBrick || ''}</TableCell>
                   <TableCell>
                     {isSaved ? (
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        <Tooltip title="Ver en Google Maps">
+                          <IconButton
+                            size="small"
+                            component="a"
+                            href={item.data.googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="ver en google maps"
+                          >
+                            <PlaceIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title={
                           highlightedEntity && highlightedEntity.type === item.type && highlightedEntity.id === item.data.id
                             ? 'Quitar resaltado'
@@ -561,7 +575,19 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                         </Tooltip>
                       </Box>
                     ) : (
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        <Tooltip title="Ver en Google Maps">
+                          <IconButton
+                            size="small"
+                            component="a"
+                            href={item.data.googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="ver en google maps"
+                          >
+                            <PlaceIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title={
                           highlightedEntity && highlightedEntity.type === item.type && highlightedEntity.id === item.data.id
                             ? 'Quitar resaltado'
@@ -622,16 +648,14 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
             })}
             {Array.from({ length: emptyRowsCount }).map((_, index) => (
               <TableRow key={`empty-${index}`}>
-                <TableCell>{allEntities.length + index + 1}</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{allEntities.length + index + 1}</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell></TableCell>
-                <TableCell></TableCell>
-                <TableCell></TableCell>
-                <TableCell></TableCell>
-                <TableCell></TableCell>
-                <TableCell></TableCell>
-                <TableCell></TableCell>
-                <TableCell></TableCell>
-                <TableCell></TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell></TableCell>
               </TableRow>
             ))}

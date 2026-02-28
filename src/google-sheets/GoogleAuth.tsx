@@ -112,9 +112,6 @@ export function GoogleAuth({
 
       {state.status === 'authenticated' ? (
         <Stack direction="row" spacing={2} alignItems="center">
-          <Box sx={{ color: 'success.main', fontSize: '0.875rem', fontWeight: 500 }}>
-            ✓ Connected
-          </Box>
           <Button
             variant="outlined"
             size="small"

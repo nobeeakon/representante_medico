@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import type { Icon, DivIcon } from 'leaflet';
+import { FilterList, FilterAlt, Fullscreen } from '@mui/icons-material';
 import type { Farmacia } from '../../__types__/pharmacy';
 import type { Medico } from '../../__types__/doctor';
 import 'leaflet/dist/leaflet.css';
@@ -119,6 +120,7 @@ export function MapView({
   onToggleSelection,
 }: MapProps) {
   const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Prepare marker data with icons based on location composition and selection state
   const markers = useMemo(() => {
@@ -189,32 +191,18 @@ export function MapView({
     return markers.filter((marker) => marker.isSelected);
   }, [markers, showOnlySelected]);
 
-  return (
-    <div style={{ position: 'relative' }}>
-      {/* Filter Button */}
-       <button
-        onClick={() => setShowOnlySelected(!showOnlySelected)}
-        disabled={!showOnlySelected && selectedEntities.length === 0 && savedEntities.length === 0}
-        style={{
-          position: 'absolute',
-          top: '10px',
-          right: '10px',
-          zIndex: 1000,
-          padding: '8px 16px',
-          fontSize: '14px',
-          fontWeight: 500,
-          cursor: 'pointer',
-          backgroundColor: showOnlySelected ? '#2563eb' : 'white',
-          color: showOnlySelected ? 'white' : '#374151',
-          border: '2px solid #e5e7eb',
-          borderRadius: '6px',
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-        }}
-      >
-        {showOnlySelected ? 'Mostrar Todos' : 'Solo Seleccionados'}
-      </button>
-    
-      <MapContainer center={center} zoom={zoom} style={{ height: '600px', width: '100%' }}>
+  // Render the map content (used in both normal and full screen views)
+  const renderMapContent = () => (
+    <MapContainer
+      center={center}
+      zoom={zoom}
+      style={{ height: '100%', width: '100%' }}
+      scrollWheelZoom={false}
+      doubleClickZoom={false}
+      touchZoom={false}
+      zoomControl={true}
+      dragging={true}
+    >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -401,6 +389,148 @@ export function MapView({
         );
       })}
     </MapContainer>
-    </div>
+  );
+
+  return (
+    <>
+      {/* Normal Map View */}
+      <div style={{ position: 'relative', height: '600px' }}>
+        {/* Filter Button - Circular Bottom Left */}
+        <button
+          onClick={() => setShowOnlySelected(!showOnlySelected)}
+          disabled={!showOnlySelected && selectedEntities.length === 0 && savedEntities.length === 0}
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '20px',
+            zIndex: 1000,
+            width: '48px',
+            height: '48px',
+            padding: '0',
+            cursor: 'pointer',
+            backgroundColor: showOnlySelected ? '#2563eb' : 'white',
+            color: showOnlySelected ? 'white' : '#374151',
+            border: showOnlySelected ? 'none' : '2px solid #e5e7eb',
+            borderRadius: '50%',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title={showOnlySelected ? 'Mostrar todos' : 'Filtrar seleccionados'}
+        >
+          {showOnlySelected ? <FilterAlt /> : <FilterList />}
+        </button>
+
+        {/* Full Screen Toggle Button - Circular Bottom Left */}
+        <button
+          onClick={() => setIsFullScreen(true)}
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '80px',
+            zIndex: 1000,
+            width: '48px',
+            height: '48px',
+            padding: '0',
+            cursor: 'pointer',
+            backgroundColor: '#059669',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title="Ver en pantalla completa"
+        >
+          <Fullscreen />
+        </button>
+
+        {renderMapContent()}
+      </div>
+
+      {/* Full Screen Dialog */}
+      {isFullScreen && (
+        <dialog
+          open
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            maxWidth: '100vw',
+            maxHeight: '100vh',
+            margin: 0,
+            padding: 0,
+            border: 'none',
+            zIndex: 9999,
+            backgroundColor: 'white',
+          }}
+        >
+          {/* Close Button */}
+          <button
+            onClick={() => setIsFullScreen(false)}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              zIndex: 10000,
+              width: '48px',
+              height: '48px',
+              padding: '0',
+              fontSize: '24px',
+              cursor: 'pointer',
+              backgroundColor: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Cerrar pantalla completa"
+          >
+            ✕
+          </button>
+
+          {/* Filter Button in Full Screen - Circular Bottom Left */}
+          <button
+            onClick={() => setShowOnlySelected(!showOnlySelected)}
+            disabled={!showOnlySelected && selectedEntities.length === 0 && savedEntities.length === 0}
+            style={{
+              position: 'absolute',
+              bottom: '20px',
+              left: '20px',
+              zIndex: 10000,
+              width: '48px',
+              height: '48px',
+              padding: '0',
+              cursor: 'pointer',
+              backgroundColor: showOnlySelected ? '#2563eb' : 'white',
+              color: showOnlySelected ? 'white' : '#374151',
+              border: showOnlySelected ? 'none' : '2px solid #e5e7eb',
+              borderRadius: '50%',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title={showOnlySelected ? 'Mostrar todos' : 'Filtrar seleccionados'}
+          >
+            {showOnlySelected ? <FilterAlt /> : <FilterList />}
+          </button>
+
+          <div style={{ width: '100%', height: '100%' }}>
+            {renderMapContent()}
+          </div>
+        </dialog>
+      )}
+    </>
   );
 }
