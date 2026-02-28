@@ -88,10 +88,15 @@ export function EditVisitDialog({
     return date.toISOString().split('T')[0];
   }, [visit.fechaVisitaPlaneada]);
 
-  // Real-time validation: status cannot be "planeado" when there's a visit time
+  // Real-time validation
   const validationError = useMemo(() => {
+    // Cannot be "planeado" when there's a visit time
     if (state.data.visitTime && state.data.status === 'planeado') {
       return 'No se puede tener estatus "Planeado" cuando hay una hora de visita. Por favor cambia el estatus a "Visitado" o "No Encontrado".';
+    }
+    // Must have visit time when status is not "planeado"
+    if (!state.data.visitTime && state.data.status !== 'planeado') {
+      return 'Se requiere una hora de visita cuando el estatus es "Visitado" o "No Encontrado". Por favor agrega la hora de visita.';
     }
     return null;
   }, [state.data.visitTime, state.data.status]);

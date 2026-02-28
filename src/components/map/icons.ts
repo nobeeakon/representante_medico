@@ -41,24 +41,29 @@ export const medicoSelectedIcon = new Icon({
   shadowSize: [41, 41],
 });
 
-export const medicoHighlightedIcon = new Icon({
-  iconUrl:
-    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [38, 62],
-  iconAnchor: [19, 62],
-  popupAnchor: [1, -52],
-  shadowSize: [62, 62],
-});
-// Highlighted icons (bigger versions for focus/highlight state)
-export const farmaciaHighlightedIcon = new Icon({
-  iconUrl:
-    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [38, 62],
-  iconAnchor: [19, 62],
-  popupAnchor: [1, -52],
-  shadowSize: [62, 62],
+// Universal highlighted icon - a star shape used for any highlighted entity
+export const highlightedIcon = divIcon({
+  html: `
+    <div style="
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+    ">
+      <svg width="50" height="50" viewBox="0 0 51 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M25.5 0L31.7313 17.6336H50.2414L35.2551 28.5829L41.4863 46.2164L26.5 35.2671L11.5137 46.2164L17.7449 28.5829L2.75856 17.6336H21.2687L25.5 0Z"
+              fill="#ff6b35"
+              stroke="white"
+              stroke-width="3"/>
+      </svg>
+    </div>
+  `,
+  className: '',
+  iconSize: [50, 50],
+  iconAnchor: [25, 25],
+  popupAnchor: [0, -25],
 });
 
 

@@ -8,10 +8,9 @@ import './Map.css';
 import {
   farmaciaIcon,
   farmaciaSelectedIcon,
-  farmaciaHighlightedIcon,
   medicoIcon,
   medicoSelectedIcon,
-  medicoHighlightedIcon,
+  highlightedIcon,
   createCombinedIcon,
   createGroupedIcon,
 } from './icons';
@@ -155,33 +154,29 @@ export function MapView({
       // Determine which icon to use based on what's at this location
       let icon: Icon | DivIcon;
 
+      // If highlighted, always use the star icon regardless of type
+      if (isHighlighted) {
+        icon = highlightedIcon;
+      }
       // Mixed types at the same location (both farmacias and medicos) - use square split icon
-      if (hasFarmacias && hasMedicos) {
-        icon = createCombinedIcon(isSelected, isHighlighted);
+      else if (hasFarmacias && hasMedicos) {
+        icon = createCombinedIcon(isSelected, false);
       }
       // Multiple farmacias - use green circular badge
       else if (hasMultipleFarmacias) {
-        icon = createGroupedIcon(location.farmacias.length, 'green', isSelected, isHighlighted);
+        icon = createGroupedIcon(location.farmacias.length, 'green', isSelected, false);
       }
       // Multiple medicos - use blue circular badge
       else if (hasMultipleMedicos) {
-        icon = createGroupedIcon(location.medicos.length, 'blue', isSelected, isHighlighted);
+        icon = createGroupedIcon(location.medicos.length, 'blue', isSelected, false);
       }
       // Single medico - use blue pin
       else if (hasMedicos) {
-        if (isHighlighted) {
-          icon = medicoHighlightedIcon;
-        } else {
-          icon = isSelected ? medicoSelectedIcon : medicoIcon;
-        }
+        icon = isSelected ? medicoSelectedIcon : medicoIcon;
       }
       // Single farmacia - use green pin (default)
       else {
-        if (isHighlighted) {
-          icon = farmaciaHighlightedIcon;
-        } else {
-          icon = isSelected ? farmaciaSelectedIcon : farmaciaIcon;
-        }
+        icon = isSelected ? farmaciaSelectedIcon : farmaciaIcon;
       }
 
       return { location, icon, isSelected, isHighlighted };
@@ -199,7 +194,7 @@ export function MapView({
       {/* Filter Button */}
        <button
         onClick={() => setShowOnlySelected(!showOnlySelected)}
-        disabled={selectedEntities.length === 0}
+        disabled={!showOnlySelected && selectedEntities.length === 0 && savedEntities.length === 0}
         style={{
           position: 'absolute',
           top: '10px',

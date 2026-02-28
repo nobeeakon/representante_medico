@@ -43,8 +43,8 @@ function App() {
 
   return (
     <MapDashboard
-      pharmacies={pharmacies.data}
-      doctors={doctors.data}
+      pharmaciesQuery={pharmacies}
+      doctorsQuery={doctors}
       visitsQuery={visits}
     />
   );

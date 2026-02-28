@@ -26,9 +26,11 @@ import {
   Edit as EditIcon,
   Add as AddIcon,
   EventRepeat as EventRepeatIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 import { CreateVisitDialog } from './CreateVisitDialog';
 import { EditVisitDialog } from './EditVisitDialog';
+import { VisitHistoryDialog } from './VisitHistoryDialog';
 import type { Farmacia } from '../__types__/pharmacy';
 import type { Medico } from '../__types__/doctor';
 import type { Visita } from '../__types__/visita';
@@ -129,6 +131,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   const [draftVisit, setDraftVisit] = useState<Visita | null>(null);
+  const [historyEntity, setHistoryEntity] = useState<{ type: 'medico' | 'farmacia'; data: Medico | Farmacia } | null>(null);
 
   // Sort saved entities by date (earliest first)
   const sortedSavedEntities = [...savedEntities].sort((a, b) => {
@@ -377,6 +380,14 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
           mode="duplicate"
         />
       )}
+      {historyEntity && (
+        <VisitHistoryDialog
+          open={true}
+          entity={historyEntity}
+          visits={visits.data}
+          onClose={() => setHistoryEntity(null)}
+        />
+      )}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" component="h2">
           Seleccionados ({farmaciasCount} farmacia
@@ -467,12 +478,20 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                     />
                   </TableCell>
                   <TableCell>
-                    {item.data.nombreCuenta || 'Sin nombre'}
-                    {isSaved && (
-                      <Typography component="span" sx={{ ml: 1, fontSize: '11px', color: '#2563eb', fontWeight: 'bold' }}>
-                        ✓ Guardada
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body2">
+                        {item.data.nombreCuenta || 'Sin nombre'}
                       </Typography>
-                    )}
+                      <Tooltip title="Ver historial de visitas">
+                        <IconButton
+                          size="small"
+                          onClick={() => setHistoryEntity({ type: item.type, data: item.data })}
+                          aria-label="ver historial"
+                        >
+                          <HistoryIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </TableCell>
                   <TableCell>
                     {item.type === 'medico' ? item.data.especialidad || '' : ''}

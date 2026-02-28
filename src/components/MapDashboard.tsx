@@ -6,11 +6,17 @@ import {
   Checkbox,
   FormControlLabel,
   Stack,
+  Button,
+  Collapse,
+  Chip,
 } from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
 import { MapView } from './map/Map';
 import { BrickFilter, NO_BRICK } from './BrickFilter';
 import { SelectedEntitiesTable } from './SelectedEntitiesTable';
 import { GoogleAuth } from '../google-sheets/GoogleAuth';
+import { CreateEntityDialog } from './CreateEntityDialog';
+import { VisitHistoryFilterDialog, type VisitHistoryFilterConfig } from './VisitHistoryFilterDialog';
 import type { Farmacia } from '../__types__/pharmacy';
 import type { Medico } from '../__types__/doctor';
 import type { Visita, VisitaStatus } from '../__types__/visita';
@@ -40,24 +46,29 @@ function getAvailableBricks(entities: Array<{ nombreBrick?: string }>): string[]
   return bricksArray;
 }
 
-type VisitsQuery = {
-  data: Visita[];
+type QueryInterface<T> = {
+  data: T[];
   loading: boolean;
   error: string | null;
-  add: (newItem: Omit<Visita, 'id' | 'createdAt'>) => Promise<Visita>;
-  batchAdd: (newItems: Array<Omit<Visita, 'id' | 'createdAt'>>) => Promise<Visita[]>;
-  updateItem: (id: string, data: Partial<Omit<Visita, 'id' | 'createdAt'>>) => Promise<void>;
+  add: (newItem: Omit<T, 'id' | 'createdAt'>) => Promise<T>;
+  updateItem: (id: string, data: Partial<Omit<T, 'id' | 'createdAt'>>) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
   reload: () => Promise<void>;
 };
 
+type VisitsQuery = QueryInterface<Visita> & {
+  batchAdd: (newItems: Array<Omit<Visita, 'id' | 'createdAt'>>) => Promise<Visita[]>;
+};
+
 type MapDashboardProps = {
-  pharmacies: Farmacia[];
-  doctors: Medico[];
+  pharmaciesQuery: QueryInterface<Farmacia>;
+  doctorsQuery: QueryInterface<Medico>;
   visitsQuery: VisitsQuery;
 };
 
-export function MapDashboard({ pharmacies, doctors, visitsQuery }: MapDashboardProps) {
+export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery }: MapDashboardProps) {
+  const pharmacies = pharmaciesQuery.data;
+  const doctors = doctorsQuery.data;
   const visits = visitsQuery.data;
   const [selectedBricks, setSelectedBricks] = useState<string[]>([]);
   const [showFarmacias, setShowFarmacias] = useState<boolean>(true);
@@ -73,6 +84,13 @@ export function MapDashboard({ pharmacies, doctors, visitsQuery }: MapDashboardP
       return todayString;
     });
   const [highlightedEntity, setHighlightedEntity] = useState<{ type: 'medico' | 'farmacia'; id: string } | null>(null);
+  const [filterVisibility, setFilterVisibility] = useState<{
+    brickFilter: boolean;
+    entityTypeFilter: boolean;
+  }>({ brickFilter: false, entityTypeFilter: false });
+  const [showCreateEntityDialog, setShowCreateEntityDialog] = useState(false);
+  const [showVisitHistoryFilterDialog, setShowVisitHistoryFilterDialog] = useState(false);
+  const [visitHistoryFilter, setVisitHistoryFilter] = useState<VisitHistoryFilterConfig>({ type: 'none' });
 
 
   // Handler to toggle entity selection (supports single or multiple entities)
@@ -177,8 +195,60 @@ export function MapDashboard({ pharmacies, doctors, visitsQuery }: MapDashboardP
     [pharmacies, doctors]
   );
 
-  // Filter entities based on selected bricks and visibility toggles
+  // Filter entities based on selected bricks, visibility toggles, and visit history
   const mapFilteredEntities = useMemo(() => {
+    // Helper function to check if an entity passes the visit history filter
+    const passesVisitHistoryFilter = (entityType: 'farmacia' | 'medico', entityId: string): boolean => {
+      if (visitHistoryFilter.type === 'none') {
+        return true;
+      }
+
+      // Get all visits for this entity
+      const entityVisits = visits.filter(
+        (v) => v.entidadObjetivoTipo === entityType && v.entidadObjetivoId === entityId
+      );
+
+      if (visitHistoryFilter.type === 'never-visited') {
+        return entityVisits.length === 0;
+      }
+
+      if (visitHistoryFilter.type === 'only-not-found') {
+        // Entity must have at least one visit and all visits must be "noEncontrado"
+        if (entityVisits.length === 0) {
+          return false;
+        }
+        return entityVisits.every((v) => v.estatus === 'noEncontrado');
+      }
+
+      if (visitHistoryFilter.type === 'not-visited-since') {
+        const daysThreshold = visitHistoryFilter.daysSince ?? 30;
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+        const thresholdString = thresholdDate.toISOString().split('T')[0];
+
+        // No visits at all means it passes
+        if (entityVisits.length === 0) {
+          return true;
+        }
+
+        // Get the most recent visit date
+        const mostRecentVisit = entityVisits
+          .filter((v) => v.fechaVisita) // Only consider visits with actual visit date
+          .sort((a, b) => (b.fechaVisita ?? '').localeCompare(a.fechaVisita ?? ''))
+          .at(0);
+
+        // If no visits with actual dates, consider it as never visited
+        if (!mostRecentVisit || !mostRecentVisit.fechaVisita) {
+          return true;
+        }
+
+        // Check if most recent visit is older than threshold
+        return mostRecentVisit.fechaVisita < thresholdString;
+      }
+
+      return true;
+    };
+
     const entities: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }> = [];
 
     // Add filtered pharmacies
@@ -193,7 +263,12 @@ export function MapDashboard({ pharmacies, doctors, visitsQuery }: MapDashboardP
               return farmacia.nombreBrick && selectedBricks.includes(farmacia.nombreBrick);
             });
 
-      farmaciasToAdd.forEach((farmacia) => {
+      // Apply visit history filter
+      const farmaciasWithVisitFilter = farmaciasToAdd.filter((farmacia) =>
+        passesVisitHistoryFilter('farmacia', farmacia.id)
+      );
+
+      farmaciasWithVisitFilter.forEach((farmacia) => {
         entities.push({ type: 'farmacia', data: farmacia });
       });
     }
@@ -210,13 +285,18 @@ export function MapDashboard({ pharmacies, doctors, visitsQuery }: MapDashboardP
               return medico.nombreBrick && selectedBricks.includes(medico.nombreBrick);
             });
 
-      medicosToAdd.forEach((medico) => {
+      // Apply visit history filter
+      const medicosWithVisitFilter = medicosToAdd.filter((medico) =>
+        passesVisitHistoryFilter('medico', medico.id)
+      );
+
+      medicosWithVisitFilter.forEach((medico) => {
         entities.push({ type: 'medico', data: medico });
       });
     }
 
     return entities;
-  }, [pharmacies, doctors, selectedBricks, showFarmacias, showMedicos]);
+  }, [pharmacies, doctors, selectedBricks, showFarmacias, showMedicos, visitHistoryFilter, visits]);
 
   const toggleHighlight = (entity: { type: 'medico' | 'farmacia'; id: string }) => {
     setHighlightedEntity(prev => {
@@ -229,12 +309,22 @@ export function MapDashboard({ pharmacies, doctors, visitsQuery }: MapDashboardP
     });
   };
 
+  // Handle saving new doctor
+  const handleSaveDoctor = async (doctor: Omit<Medico, 'id' | 'createdAt'>) => {
+    await doctorsQuery.add(doctor);
+  };
+
+  // Handle saving new pharmacy
+  const handleSavePharmacy = async (pharmacy: Omit<Farmacia, 'id' | 'createdAt'>) => {
+    await pharmaciesQuery.add(pharmacy);
+  };
+
   return (
-    <Container maxWidth="lg" sx={{ py: 3 }}>
+    <Container maxWidth='xl' sx={{ py: 3 }}>
       <Stack spacing={3}>
         {/* Header */}
         <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="h3" component="h1" gutterBottom>
+          <Typography variant="h4" component="h1" gutterBottom>
             Mapa de Farmacias y Médicos
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -242,56 +332,106 @@ export function MapDashboard({ pharmacies, doctors, visitsQuery }: MapDashboardP
           </Box>
         </Box>
 
+        {/* Action Buttons */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => setShowCreateEntityDialog(true)}
+          >
+            Entidad
+          </Button>
+          <Button
+            variant={filterVisibility.brickFilter ? 'contained' : 'outlined'}
+            onClick={() => setFilterVisibility(prev => ({ ...prev, brickFilter: !prev.brickFilter }))}
+          >
+             Bricks
+          </Button>
+          <Button
+            variant={filterVisibility.entityTypeFilter ? 'contained' : 'outlined'}
+            onClick={() => setFilterVisibility(prev => ({ ...prev, entityTypeFilter: !prev.entityTypeFilter }))}
+          >
+             Entidades
+          </Button>
+          <Button
+            variant={visitHistoryFilter.type !== 'none' ? 'contained' : 'outlined'}
+            color={visitHistoryFilter.type !== 'none' ? 'secondary' : 'primary'}
+            onClick={() => setShowVisitHistoryFilterDialog(true)}
+          >
+            Historial
+            {visitHistoryFilter.type !== 'none' && (
+              <Chip
+                label="●"
+                size="small"
+                color="secondary"
+                sx={{ ml: 1, height: '20px', minWidth: '20px', '& .MuiChip-label': { px: 0.5 } }}
+              />
+            )}
+          </Button>
+        </Box>
+
         {/* Brick Filter */}
-        <BrickFilter bricks={availableBricks} value={selectedBricks} onChange={setSelectedBricks} />
+        <Collapse in={filterVisibility.brickFilter}>
+          <BrickFilter bricks={availableBricks} value={selectedBricks} onChange={setSelectedBricks} />
+        </Collapse>
 
         {/* Visibility Toggles */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3 }}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={showFarmacias}
-                onChange={(e) => setShowFarmacias(e.target.checked)}
-                sx={{ color: 'success.main', '&.Mui-checked': { color: 'success.main' } }}
-              />
-            }
-            label={
-              <Typography
-                sx={{ fontWeight: showFarmacias ? 'bold' : 'normal', color: 'success.main' }}
-              >
-                ● Farmacias
-              </Typography>
-            }
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={showMedicos}
-                onChange={(e) => setShowMedicos(e.target.checked)}
-                sx={{ color: 'primary.main', '&.Mui-checked': { color: 'primary.main' } }}
-              />
-            }
-            label={
-              <Typography
-                sx={{ fontWeight: showMedicos ? 'bold' : 'normal', color: 'primary.main' }}
-              >
-                ● Médicos
-              </Typography>
-            }
-          />
-        </Box>
+        <Collapse in={filterVisibility.entityTypeFilter}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={showFarmacias}
+                  onChange={(e) => setShowFarmacias(e.target.checked)}
+                  sx={{ color: 'success.main', '&.Mui-checked': { color: 'success.main' } }}
+                />
+              }
+              label={
+                <Typography
+                  sx={{ fontWeight: showFarmacias ? 'bold' : 'normal', color: 'success.main' }}
+                >
+                  ● Farmacias
+                </Typography>
+              }
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={showMedicos}
+                  onChange={(e) => setShowMedicos(e.target.checked)}
+                  sx={{ color: 'primary.main', '&.Mui-checked': { color: 'primary.main' } }}
+                />
+              }
+              label={
+                <Typography
+                  sx={{ fontWeight: showMedicos ? 'bold' : 'normal', color: 'primary.main' }}
+                >
+                  ● Médicos
+                </Typography>
+              }
+            />
+          </Box>
+        </Collapse>
 
         {/* Stats */}
         <Stack spacing={1} alignItems="center">
           <Typography variant="body2" color="text.secondary">
             Mostrando ({mapFilteredEntities.filter((e) => e.type === 'farmacia').length}/
-            {pharmacies.length}) farmacias
-            {mapFilteredEntities.filter((e) => e.type === 'medico').length}/{doctors.length}) médicos
+            {pharmacies.length}) farmacias ({mapFilteredEntities.filter((e) => e.type === 'medico').length}/{doctors.length}) médicos
           </Typography>
+          {visitHistoryFilter.type !== 'none' && (
+            <Typography variant="caption" color="secondary.main" sx={{ fontWeight: 'bold' }}>
+              {visitHistoryFilter.type === 'never-visited' && '🔍 Filtro: Nunca visitadas'}
+              {visitHistoryFilter.type === 'not-visited-since' &&
+                `🔍 Filtro: No visitadas desde hace ${visitHistoryFilter.daysSince} días`}
+              {visitHistoryFilter.type === 'only-not-found' && '🔍 Filtro: Solo marcadas como "No encontrado"'}
+            </Typography>
+          )}
         </Stack>
 
         {/* Map */}
-        <Box>
+        <Box paddingX={6}>
           <MapView
             entities={mapFilteredEntities}
             savedEntities={savedEntities}
@@ -316,6 +456,23 @@ export function MapDashboard({ pharmacies, doctors, visitsQuery }: MapDashboardP
           onDateChange={setSelectedDate}
         />
       </Stack>
+
+      {/* Create Entity Dialog */}
+      {showCreateEntityDialog && (
+        <CreateEntityDialog
+          onClose={() => setShowCreateEntityDialog(false)}
+          onSaveDoctor={handleSaveDoctor}
+          onSavePharmacy={handleSavePharmacy}
+        />
+      )}
+
+      {/* Visit History Filter Dialog */}
+      <VisitHistoryFilterDialog
+        open={showVisitHistoryFilterDialog}
+        currentFilter={visitHistoryFilter}
+        onClose={() => setShowVisitHistoryFilterDialog(false)}
+        onApply={setVisitHistoryFilter}
+      />
     </Container>
   );
 }
