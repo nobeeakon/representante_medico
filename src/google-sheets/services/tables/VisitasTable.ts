@@ -75,7 +75,7 @@ export class VisitasTable extends BaseTable<Visita> {
     return {
       id: row[0] || '',
       createdAt: row[1] || '',
-      fechaVisita: row[2] || undefined,
+      fechaVisita: row[2] || row[9] || '', // Default to fechaVisitaPlaneada if empty
       entidadObjetivoTipo: this.validateTargetEntityType(entidadObjetivoTipo)?entidadObjetivoTipo:'medico',
       entidadObjetivoId: row[4] || '',
       estatus: this.validateEstatus(estatus)?estatus:'planeado' as const,
@@ -95,7 +95,7 @@ export class VisitasTable extends BaseTable<Visita> {
     return [
       visita.id,
       visita.createdAt,
-      visita.fechaVisita || '',
+      visita.fechaVisita,
       visita.entidadObjetivoTipo,
       visita.entidadObjetivoId,
       visita.estatus,

@@ -253,13 +253,7 @@ export function CreateEntityDialog({
     <Dialog
       open={true}
       onClose={onClose}
-      maxWidth="xl"
-      fullWidth
-      slotProps={{
-        paper: {
-          sx: { maxHeight: '90vh' }
-        }
-      }}
+      fullScreen
     >
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -47,9 +47,9 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
           visit.entidadObjetivoId === entity.data.id
       )
       .sort((a, b) => {
-        // Sort by planned visit date, most recent first
-        const dateA = new Date(a.fechaVisitaPlaneada || a.createdAt).getTime();
-        const dateB = new Date(b.fechaVisitaPlaneada || b.createdAt).getTime();
+        // Sort by visit date, most recent first
+        const dateA = new Date(a.fechaVisita).getTime();
+        const dateB = new Date(b.fechaVisita).getTime();
         return dateB - dateA;
       });
   }, [entity, visits]);
@@ -148,8 +148,7 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Fecha Planeada</TableCell>
-                  <TableCell>Hora Planeada</TableCell>
+                  <TableCell>Fecha Visita</TableCell>
                   <TableCell>Hora Visita</TableCell>
                   <TableCell>Estatus</TableCell>
                   <TableCell>Notas</TableCell>
@@ -166,8 +165,7 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
 
                   return (
                     <TableRow key={visit.id}>
-                      <TableCell>{formatDate(visit.fechaVisitaPlaneada)}</TableCell>
-                      <TableCell>{formatTime(visit.fechaVisitaPlaneada)}</TableCell>
+                      <TableCell>{formatDate(visit.fechaVisita)}</TableCell>
                       <TableCell>{formatTime(visit.fechaVisita)}</TableCell>
                       <TableCell>
                         <Chip

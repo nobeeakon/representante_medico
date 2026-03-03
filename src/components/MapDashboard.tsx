@@ -12,6 +12,7 @@ import { GoogleAuth } from '../google-sheets/GoogleAuth';
 import { CreateEntityDialog } from './CreateEntityDialog';
 import { ManageProductsDialog } from './ManageProductsDialog';
 import { MapFilters } from './MapFilters';
+import { useDateUrlSync } from './useTableUrlSync';
 import type { Farmacia } from '../__types__/pharmacy';
 import type { Medico } from '../__types__/doctor';
 import type { Visita, VisitaStatus } from '../__types__/visita';
@@ -57,6 +58,10 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
     const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     return todayString;
   });
+
+  // Sync selected date with URL query parameter
+  useDateUrlSync(selectedDate, setSelectedDate);
+
   const [highlightedEntity, setHighlightedEntity] = useState<{ type: 'medico' | 'farmacia'; id: string } | null>(null);
   const [showCreateEntityDialog, setShowCreateEntityDialog] = useState(false);
   const [showManageProductsDialog, setShowManageProductsDialog] = useState(false);
@@ -111,15 +116,15 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
 
 
   const savedEntities = useMemo(() => {
-      const visitsTargetDate = visits.filter(visitItem => visitItem.fechaVisitaPlaneada.includes(selectedDate));
+      const visitsTargetDate = visits.filter(visitItem => visitItem.fechaVisita.includes(selectedDate));
 
       const visitsMap: {
-        medico: Map<string, Array<{visitId: string; plannedVisitDate: string; visitDate?: string; status: VisitaStatus}>>;
-        farmacia: Map<string, Array<{visitId: string; plannedVisitDate: string; visitDate?: string; status: VisitaStatus}>>;
+        medico: Map<string, Array<{visitId: string; visitDate: string; status: VisitaStatus}>>;
+        farmacia: Map<string, Array<{visitId: string; visitDate: string; status: VisitaStatus}>>;
       } = {medico: new Map(), farmacia: new Map()};
 
       visitsTargetDate.forEach(visitItem => {
-        const visitData = {visitId: visitItem.id, plannedVisitDate: visitItem.fechaVisitaPlaneada, visitDate: visitItem.fechaVisita, status: visitItem.estatus};
+        const visitData = {visitId: visitItem.id, visitDate: visitItem.fechaVisita, status: visitItem.estatus};
 
         if (visitItem.entidadObjetivoTipo === 'farmacia') {
           const currentVisits = visitsMap.farmacia.get(visitItem.entidadObjetivoId) ?? [];
@@ -190,14 +195,9 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
       <Stack spacing={3}>
         {/* Header */}
         <Box sx={{ textAlign: 'center' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
             <GoogleAuth />
-          </Box>
-        </Box>
-
-        {/* Action Buttons */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <Button
+              <Button
             variant="contained"
             color="primary"
             startIcon={<AddIcon />}
@@ -211,9 +211,26 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
             startIcon={<AddIcon />}
             onClick={() => setShowManageProductsDialog(true)}
           >
-            Productos
+            Prod
           </Button>
+          </Box>
         </Box>
+
+
+        {/* Selected Entities Table */}
+        <SelectedEntitiesTable
+          entities={selectedEntities}
+          savedEntities={savedEntities}
+          visitsQuery={visitsQuery}
+          defaultRows={15}
+          selectedDate={selectedDate}
+          doctors={doctors}
+          pharmacies={pharmacies}
+          onUpdateEntities={setSelectedEntities}
+          highlightedEntity={highlightedEntity}
+          onToggleHighlight={toggleHighlight}
+          onDateChange={setSelectedDate}
+        />
 
         {/* Map Filters */}
         <MapFilters
@@ -233,21 +250,6 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
             onToggleSelection={toggleEntitySelection}
           />
         </Box>
-
-        {/* Selected Entities Table */}
-        <SelectedEntitiesTable
-          entities={selectedEntities}
-          savedEntities={savedEntities}
-          visitsQuery={visitsQuery}
-          defaultRows={15}
-          selectedDate={selectedDate}
-          doctors={doctors}
-          pharmacies={pharmacies}
-          onUpdateEntities={setSelectedEntities}
-          highlightedEntity={highlightedEntity}
-          onToggleHighlight={toggleHighlight}
-          onDateChange={setSelectedDate}
-        />
       </Stack>
 
       {/* Create Entity Dialog */}

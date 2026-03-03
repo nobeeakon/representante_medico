@@ -14,6 +14,12 @@ import {
   Button,
   CircularProgress,
   TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
+  OutlinedInput,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -27,10 +33,12 @@ import {
   EventRepeat as EventRepeatIcon,
   History as HistoryIcon,
   Place as PlaceIcon,
+  MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import { CreateVisitDialog } from './CreateVisitDialog';
 import { EditVisitDialog } from './EditVisitDialog';
 import { VisitHistoryDialog } from './VisitHistoryDialog';
+import { useStatusFilterUrlSync } from './useTableUrlSync';
 import type { Farmacia } from '../__types__/pharmacy';
 import type { Medico } from '../__types__/doctor';
 import type { Visita } from '../__types__/visita';
@@ -97,8 +105,8 @@ type SelectedEntity =
   | { type: 'medico'; data: Medico; date?: string; estatus?: string};
 
 type SavedEntity =
-  | { type: 'farmacia'; data: Farmacia; visitId: string; plannedVisitDate: string; visitDate?: string; status: string }
-  | { type: 'medico'; data: Medico; visitId: string; plannedVisitDate: string; visitDate?: string; status: string };
+  | { type: 'farmacia'; data: Farmacia; visitId: string; visitDate: string; status: string }
+  | { type: 'medico'; data: Medico; visitId: string; visitDate: string; status: string };
 
 type VisitsQuery = {
   data: Visita[];
@@ -132,14 +140,58 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   const [draftVisit, setDraftVisit] = useState<Visita | null>(null);
   const [historyEntity, setHistoryEntity] = useState<{ type: 'medico' | 'farmacia'; data: Medico | Farmacia } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [showMobileActions, setShowMobileActions] = useState(false);
+
+  // Sync status filter with URL query parameter
+  useStatusFilterUrlSync(selectedStatuses, setSelectedStatuses);
 
   // Sort saved entities by date (earliest first)
   const sortedSavedEntities = [...savedEntities].sort((a, b) => {
-    return new Date(a.plannedVisitDate).getTime() - new Date(b.plannedVisitDate).getTime();
+    return new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime();
   });
 
   // Combine selected and saved entities for display
-  const allEntities = [...entities, ...sortedSavedEntities];
+  const unfilteredEntities = useMemo(() => {
+    const unfiltered = [...entities, ...sortedSavedEntities];
+
+
+    return unfiltered;
+  }, [entities, sortedSavedEntities])
+
+  // Filter entities based on search query and status
+  const allEntities = useMemo(() => {
+    let filtered = [...unfilteredEntities];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((item) => {
+        const searchableText = [
+          item.data.nombreCuenta || '',
+          item.type === 'medico' ? item.data.especialidad || '' : '',
+          item.data.calle || '',
+          item.data.colonia || '',
+          item.data.nombreBrick || '',
+        ].join(' ').toLowerCase();
+        return searchableText.includes(query);
+      });
+    }
+
+    // Apply status filter (only for saved entities)
+    if (selectedStatuses.length > 0) {
+      filtered = filtered.filter((item) => {
+        // Keep all unsaved entities
+        if (!('visitId' in item)) return true;
+        // Filter saved entities by status
+        return selectedStatuses.includes(item.status);
+      });
+    }
+
+    return filtered;
+  }, [unfilteredEntities, searchQuery, selectedStatuses]);
+
   const emptyRowsCount = Math.max(0, defaultRows - allEntities.length);
 
   // Calculate counts from all entities
@@ -207,10 +259,11 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
         const minutes = 0 + (index);
         const hours = 0;
         const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+        const dateTime = `${dateString}T${timeString}`;
 
         return {
-          fechaVisita: undefined,
-          fechaVisitaPlaneada: `${dateString}T${timeString}`,
+          fechaVisita: dateTime,
+          fechaVisitaPlaneada: dateTime,
           entidadObjetivoTipo: entity.type,
           entidadObjetivoId: entity.data.id,
           estatus: 'planeado' as const,
@@ -281,9 +334,10 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
 
     try {
       // Merge draft with updates to create the final visit
+      const visitDate = updates.fechaVisita ?? draftVisit.fechaVisita;
       const newVisit: Omit<Visita, 'id' | 'createdAt'> = {
-        fechaVisita: updates.fechaVisita ?? draftVisit.fechaVisita,
-        fechaVisitaPlaneada: updates.fechaVisitaPlaneada ?? draftVisit.fechaVisitaPlaneada,
+        fechaVisita: visitDate,
+        fechaVisitaPlaneada: visitDate, // Keep in sync for backward compatibility
         entidadObjetivoTipo: draftVisit.entidadObjetivoTipo,
         entidadObjetivoId: draftVisit.entidadObjetivoId,
         estatus: updates.estatus ?? draftVisit.estatus,
@@ -305,11 +359,12 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
   // Handler to open edit dialog with a draft visit for an entity
   const handleCreateVisitForEntity = (entity: SavedEntity) => {
     // Create a draft visit object that will be saved when user clicks save in the dialog
+    const plannedDateTime = `${selectedDate}T09:00:00`; // Default to 9:00 AM
     const draft: Visita = {
       id: 'draft-' + Date.now(), // Temporary ID
       createdAt: new Date().toISOString(),
-      fechaVisita: undefined,
-      fechaVisitaPlaneada: `${selectedDate}T09:00:00`, // Default to 9:00 AM
+      fechaVisita: plannedDateTime,
+      fechaVisitaPlaneada: plannedDateTime,
       entidadObjetivoTipo: entity.type,
       entidadObjetivoId: entity.data.id,
       estatus: 'planeado' as const,
@@ -396,65 +451,152 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
         gap: 2,
         mb: 2
       }}>
-        <Typography variant="h5" component="h2" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
-          Seleccionados ({farmaciasCount} farmacia
-          {farmaciasCount !== 1 ? 's' : ''}, {medicosCount} médico
-          {medicosCount !== 1 ? 's' : ''})
-        </Typography>
+
         <Box sx={{
           display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
           gap: 1,
           alignItems: { xs: 'stretch', sm: 'center' }
         }}>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<AddIcon />}
-            onClick={() => setIsCreateDialogOpen(true)}
-            size="small"
-          >
-            Nueva Visita
-          </Button>
-          <TextField
-            type="date"
-            label="Fecha de visita"
-            value={selectedDate}
-            onChange={(e) => onDateChange(e.target.value)}
-            size="small"
-            InputLabelProps={{
-              shrink: true,
-            }}
-            sx={{ minWidth: { xs: '100%', sm: 160 } }}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
-            onClick={handleSaveVisits}
-            disabled={entities.length === 0 || isSaving}
-            size="small"
-          >
-            {isSaving ? 'Guardando...' : 'Guardar Visitas'}
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<ClearAllIcon />}
-            onClick={handleClearAll}
-            disabled={entities.length === 0}
-            size="small"
-          >
-            Limpiar Todo
-          </Button>
+          {/* Primary actions - always visible */}
+          <Box sx={{
+            display: 'flex',
+            gap: 1,
+            alignItems: 'center',
+            flexWrap: { xs: 'nowrap', sm: 'wrap' }
+          }}>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<AddIcon />}
+              onClick={() => setIsCreateDialogOpen(true)}
+              size="small"
+            >
+              Visita
+            </Button>
+            <TextField
+              type="date"
+              label="Fecha de visita"
+              value={selectedDate}
+              onChange={(e) => onDateChange(e.target.value)}
+              size="small"
+              InputLabelProps={{
+                shrink: true,
+              }}
+              sx={{ minWidth: { xs: '140px', sm: 160 } }}
+            />
+            {/* Toggle button - only on mobile */}
+            <IconButton
+              size="small"
+              onClick={() => setShowMobileActions(!showMobileActions)}
+              sx={{
+                display: { xs: 'flex', sm: 'none' },
+                bgcolor: showMobileActions ? 'action.selected' : 'transparent',
+              }}
+              aria-label="mostrar más acciones"
+            >
+              <MoreVertIcon />
+            </IconButton>
+          </Box>
+
+          {/* Secondary actions - collapsible on mobile, always visible on desktop */}
+          <Box sx={{
+            display: {
+              xs: showMobileActions ? 'flex' : 'none',
+              sm: 'flex'
+            },
+            gap: 1,
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' }
+          }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
+              onClick={handleSaveVisits}
+              disabled={entities.length === 0 || isSaving}
+              size="small"
+            >
+              {isSaving ? 'Guardando...' : 'Guardar Visitas'}
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<ClearAllIcon />}
+              onClick={handleClearAll}
+              disabled={entities.length === 0}
+              size="small"
+            >
+              Limpiar Todo
+            </Button>
+          </Box>
         </Box>
+      </Box>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: 2,
+        mb: 2
+      }}>
+        <TextField
+          label="Buscar"
+          placeholder="Nombre, especialidad, calle, colonia..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          size="small"
+          sx={{ flex: 1, minWidth: { xs: '100%', sm: 200 } }}
+        />
+        <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
+          <InputLabel id="status-filter-label">Filtrar por estatus</InputLabel>
+          <Select
+            labelId="status-filter-label"
+            multiple
+            value={selectedStatuses}
+            onChange={(e) => setSelectedStatuses(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+            input={<OutlinedInput label="Filtrar por estatus" />}
+            renderValue={(selected) => (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {selected.map((value) => (
+                  <Chip
+                    key={value}
+                    label={STATUS_DISPLAY[value]?.text || value}
+                    size="small"
+                    sx={{
+                      backgroundColor: STATUS_DISPLAY[value]?.bgColor,
+                      color: STATUS_DISPLAY[value]?.color,
+                    }}
+                  />
+                ))}
+              </Box>
+            )}
+          >
+            {Object.entries(STATUS_DISPLAY).map(([key, info]) => (
+              <MenuItem key={key} value={key}>
+                <Chip
+                  label={info.text}
+                  size="small"
+                  sx={{
+                    backgroundColor: info.bgColor,
+                    color: info.color,
+                  }}
+                />
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+      <Box px={2}>
+              <Typography variant="body2" color="text.secondary">
+           {farmaciasCount}/{unfilteredEntities.filter(item => item.type === 'farmacia').length} farmacias
+          , {medicosCount}/{unfilteredEntities.filter(item => item.type === 'medico').length} médicos
+          
+        </Typography>
       </Box>
       <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Índice</TableCell>
-              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Hora Planeada</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
               <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Hora</TableCell>
               <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Estatus</TableCell>
               <TableCell>Nombre</TableCell>
@@ -473,12 +615,9 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
               return (
                 <TableRow
                   key={isSaved ? `saved-${item.visitId}` : `${item.type}-${item.data.id}`}
-                  sx={isSaved ? { backgroundColor: '#f0f9ff' } : {}}
+                  sx={isSaved && item.status ? { backgroundColor: STATUS_DISPLAY[item.status]?.bgColor || '#f0f9ff' } : {}}
                 >
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{index + 1}</TableCell>
-                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                    {isSaved ? <TimeDisplay dateString={item.plannedVisitDate} /> : ''}
-                  </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     {isSaved ? <TimeDisplay dateString={item.visitDate} /> : ''}
                   </TableCell>
@@ -651,8 +790,8 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{allEntities.length + index + 1}</TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell></TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>

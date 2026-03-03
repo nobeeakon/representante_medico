@@ -162,7 +162,7 @@ export function CreateVisitDialog({
       const dateTime = `${state.data.selectedDate}T${time}:00`;
 
       const newVisit: Omit<Visita, 'id' | 'createdAt'> = {
-        fechaVisita: undefined,
+        fechaVisita: dateTime,
         fechaVisitaPlaneada: dateTime,
         entidadObjetivoTipo: state.data.selectedEntity.type,
         entidadObjetivoId: state.data.selectedEntity.id,
@@ -201,11 +201,7 @@ export function CreateVisitDialog({
     <Dialog
       open={true}
       onClose={onClose}
-      maxWidth="lg"
-      fullWidth
-      PaperProps={{
-        sx: { height: '90vh' }
-      }}
+      fullScreen
     >
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

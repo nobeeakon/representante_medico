@@ -56,7 +56,7 @@ export function VisitHistoryFilterDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} fullScreen>
       <DialogTitle>Filtro por Historial de Visitas</DialogTitle>
       <DialogContent>
         <Stack spacing={3} sx={{ mt: 1 }}>

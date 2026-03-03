@@ -37,7 +37,6 @@ type DialogState = {
   loading: boolean;
   error: string | null;
   data: {
-    plannedTime: string;
     visitTime: string;
     status: VisitaStatus;
     note: string;
@@ -45,12 +44,6 @@ type DialogState = {
 };
 
 const getInitialState = (visit: Visita): DialogState => {
-  // Extract time from planned visit date
-  const plannedDate = new Date(visit.fechaVisitaPlaneada);
-  const plannedHours = plannedDate.getHours();
-  const plannedMinutes = plannedDate.getMinutes();
-  const plannedTime = `${String(plannedHours).padStart(2, '0')}:${String(plannedMinutes).padStart(2, '0')}`;
-
   // Extract time from actual visit date (if exists)
   let visitTime = '';
   if (visit.fechaVisita) {
@@ -64,7 +57,6 @@ const getInitialState = (visit: Visita): DialogState => {
     loading: false,
     error: null,
     data: {
-      plannedTime,
       visitTime,
       status: visit.estatus,
       note: visit.nota || '',
@@ -82,11 +74,11 @@ export function EditVisitDialog({
 }: EditVisitDialogProps) {
   const [state, setState] = useState<DialogState>(() => getInitialState(visit));
 
-  // Get the date part from the planned visit date (both dates should use the same date)
+  // Get the date part from the visit date
   const dateString = useMemo(() => {
-    const date = new Date(visit.fechaVisitaPlaneada);
+    const date = new Date(visit.fechaVisita);
     return date.toISOString().split('T')[0];
-  }, [visit.fechaVisitaPlaneada]);
+  }, [visit.fechaVisita]);
 
   // Real-time validation
   const validationError = useMemo(() => {
@@ -133,11 +125,6 @@ export function EditVisitDialog({
         nota: state.data.note || undefined,
       };
 
-      // Update planned visit date/time
-      if (state.data.plannedTime) {
-        updates.fechaVisitaPlaneada = `${dateString}T${state.data.plannedTime}:00`;
-      }
-
       // Update actual visit date/time if provided
       if (state.data.visitTime) {
         updates.fechaVisita = `${dateString}T${state.data.visitTime}:00`;
@@ -161,8 +148,7 @@ export function EditVisitDialog({
     <Dialog
       open={true}
       onClose={onClose}
-      maxWidth="sm"
-      fullWidth
+      fullScreen
     >
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -180,38 +166,7 @@ export function EditVisitDialog({
             <strong>Entidad:</strong>{' '}
             {entityType === 'medico' ? 'Médico' : 'Farmacia'} - {entityName}
           </Typography>
-          <Typography variant="body2" sx={{ mt: 0.5 }}>
-            <strong>Fecha:</strong> {new Date(visit.fechaVisitaPlaneada).toLocaleDateString('es-MX', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </Typography>
         </Alert>
-
-        {/* Planned Time */}
-        <TextField
-          type="time"
-          label="Hora Planeada"
-          value={state.data.plannedTime}
-          onChange={(e) =>
-            setState((prev) => ({
-              ...prev,
-              data: { ...prev.data, plannedTime: e.target.value },
-            }))
-          }
-          size="small"
-          InputLabelProps={{
-            shrink: true,
-          }}
-          slotProps={{
-            htmlInput: {
-              step: 60, // 1 minute
-            },
-          }}
-          fullWidth
-        />
 
         {/* Actual Visit Time */}
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
