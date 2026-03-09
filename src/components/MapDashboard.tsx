@@ -116,11 +116,19 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
 
 
   const savedEntities = useMemo(() => {
-      const visitsTargetDate = visits.filter(visitItem => visitItem.fechaVisita.includes(selectedDate));
+      // Filter visits for the selected date (comparing dates at day level in local timezone)
+      // Parse date string as local time, not UTC
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const nextDay = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
+
+      const visitsTargetDate = visits.filter(visitItem => {
+        return visitItem.fechaVisita >= selectedDateObj && visitItem.fechaVisita < nextDay;
+      });
 
       const visitsMap: {
-        medico: Map<string, Array<{visitId: string; visitDate: string; status: VisitaStatus}>>;
-        farmacia: Map<string, Array<{visitId: string; visitDate: string; status: VisitaStatus}>>;
+        medico: Map<string, Array<{visitId: string; visitDate: Date; status: VisitaStatus}>>;
+        farmacia: Map<string, Array<{visitId: string; visitDate: Date; status: VisitaStatus}>>;
       } = {medico: new Map(), farmacia: new Map()};
 
       visitsTargetDate.forEach(visitItem => {
@@ -237,6 +245,7 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
           pharmacies={pharmacies}
           doctors={doctors}
           visits={visits}
+          selectedDate={selectedDate}
           onFilteredEntitiesChange={handleFilteredEntitiesChange}
         />
 

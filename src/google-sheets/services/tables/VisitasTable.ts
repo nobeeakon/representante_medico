@@ -72,10 +72,14 @@ export class VisitasTable extends BaseTable<Visita> {
     const estatus = row[5] || ''
     const entidadObjetivoTipo = row[3] || ''
 
+    // Parse fechaVisita from ISO string to Date
+    const fechaVisitaString = row[2] || row[9] || ''; // Default to fechaVisitaPlaneada if empty
+    const fechaVisita = fechaVisitaString ? new Date(fechaVisitaString) : new Date();
+
     return {
       id: row[0] || '',
       createdAt: row[1] || '',
-      fechaVisita: row[2] || row[9] || '', // Default to fechaVisitaPlaneada if empty
+      fechaVisita,
       entidadObjetivoTipo: this.validateTargetEntityType(entidadObjetivoTipo)?entidadObjetivoTipo:'medico',
       entidadObjetivoId: row[4] || '',
       estatus: this.validateEstatus(estatus)?estatus:'planeado' as const,
@@ -92,10 +96,13 @@ export class VisitasTable extends BaseTable<Visita> {
    * Convert Visita object to spreadsheet row
    */
   protected objectToRow(visita: Visita): (string | number)[] {
+    // Serialize Date to ISO string (YYYY-MM-DDTHH:mm:ss.sssZ)
+    const fechaVisitaString = visita.fechaVisita.toISOString();
+
     return [
       visita.id,
       visita.createdAt,
-      visita.fechaVisita,
+      fechaVisitaString,
       visita.entidadObjetivoTipo,
       visita.entidadObjetivoId,
       visita.estatus,

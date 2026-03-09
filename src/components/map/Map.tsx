@@ -22,8 +22,8 @@ type SelectedEntity = {
 };
 
 type SavedEntity =
-  | { type: 'farmacia'; data: Farmacia; visitId: string; visitDate: string; status: string }
-  | { type: 'medico'; data: Medico; visitId: string; visitDate: string; status: string };
+  | { type: 'farmacia'; data: Farmacia; visitId: string; visitDate: Date; status: string }
+  | { type: 'medico'; data: Medico; visitId: string; visitDate: Date; status: string };
 
 interface MapProps {
   entities?: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }>;

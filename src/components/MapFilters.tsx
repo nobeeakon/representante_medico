@@ -19,6 +19,7 @@ type MapFiltersProps = {
   pharmacies: Farmacia[];
   doctors: Medico[];
   visits: Visita[];
+  selectedDate: string;
   onFilteredEntitiesChange: (entities: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }>) => void;
 };
 
@@ -45,7 +46,7 @@ function getAvailableBricks(entities: Array<{ nombreBrick?: string }>): string[]
   return bricksArray;
 }
 
-export function MapFilters({ pharmacies, doctors, visits, onFilteredEntitiesChange }: MapFiltersProps) {
+export function MapFilters({ pharmacies, doctors, visits, selectedDate, onFilteredEntitiesChange }: MapFiltersProps) {
   const [selectedBricks, setSelectedBricks] = useState<string[]>([]);
   const [showFarmacias, setShowFarmacias] = useState<boolean>(true);
   const [showMedicos, setShowMedicos] = useState<boolean>(true);
@@ -63,6 +64,12 @@ export function MapFilters({ pharmacies, doctors, visits, onFilteredEntitiesChan
 
   // Filter entities based on selected bricks, visibility toggles, and visit history
   const filteredEntities = useMemo(() => {
+    // Helper to parse date string in local timezone (not UTC)
+    const parseDateLocal = (dateStr: string): Date => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day, 0, 0, 0, 0);
+    };
+
     // Helper function to check if an entity passes the visit history filter
     const passesVisitHistoryFilter = (entityType: 'farmacia' | 'medico', entityId: string): boolean => {
       if (visitHistoryFilter.type === 'none') {
@@ -88,9 +95,9 @@ export function MapFilters({ pharmacies, doctors, visits, onFilteredEntitiesChan
 
       if (visitHistoryFilter.type === 'not-visited-since') {
         const daysThreshold = visitHistoryFilter.daysSince ?? 30;
-        const thresholdDate = new Date();
-        thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
-        const thresholdString = thresholdDate.toISOString().split('T')[0];
+        const referenceDate = parseDateLocal(selectedDate);
+        const thresholdDate = new Date(referenceDate);
+        thresholdDate.setDate(referenceDate.getDate() - daysThreshold);
 
         // No visits at all means it passes
         if (entityVisits.length === 0) {
@@ -100,7 +107,7 @@ export function MapFilters({ pharmacies, doctors, visits, onFilteredEntitiesChan
         // Get the most recent visit date
         const mostRecentVisit = entityVisits
           .filter((v) => v.fechaVisita) // Only consider visits with actual visit date
-          .sort((a, b) => (b.fechaVisita ?? '').localeCompare(a.fechaVisita ?? ''))
+          .sort((a, b) => b.fechaVisita.getTime() - a.fechaVisita.getTime())
           .at(0);
 
         // If no visits with actual dates, consider it as never visited
@@ -109,14 +116,14 @@ export function MapFilters({ pharmacies, doctors, visits, onFilteredEntitiesChan
         }
 
         // Check if most recent visit is older than threshold
-        return mostRecentVisit.fechaVisita < thresholdString;
+        return mostRecentVisit.fechaVisita < thresholdDate;
       }
 
       if (visitHistoryFilter.type === 'visited-within-days') {
         const daysThreshold = visitHistoryFilter.daysSince ?? 30;
-        const thresholdDate = new Date();
-        thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
-        const thresholdString = thresholdDate.toISOString().split('T')[0];
+        const referenceDate = parseDateLocal(selectedDate);
+        const thresholdDate = new Date(referenceDate);
+        thresholdDate.setDate(referenceDate.getDate() - daysThreshold);
 
         // No visits at all means it doesn't pass
         if (entityVisits.length === 0) {
@@ -126,7 +133,7 @@ export function MapFilters({ pharmacies, doctors, visits, onFilteredEntitiesChan
         // Get the most recent visit date
         const mostRecentVisit = entityVisits
           .filter((v) => v.fechaVisita) // Only consider visits with actual visit date
-          .sort((a, b) => (b.fechaVisita ?? '').localeCompare(a.fechaVisita ?? ''))
+          .sort((a, b) => b.fechaVisita.getTime() - a.fechaVisita.getTime())
           .at(0);
 
         // If no visits with actual dates, doesn't pass
@@ -135,7 +142,44 @@ export function MapFilters({ pharmacies, doctors, visits, onFilteredEntitiesChan
         }
 
         // Check if most recent visit is within the threshold (newer than or equal to threshold)
-        return mostRecentVisit.fechaVisita >= thresholdString;
+        return mostRecentVisit.fechaVisita >= thresholdDate;
+      }
+
+      if (visitHistoryFilter.type === 'planning-focused') {
+        const daysAhead = visitHistoryFilter.daysAhead ?? 7;
+        const daysBack = visitHistoryFilter.daysBack ?? 30;
+
+        const referenceDate = parseDateLocal(selectedDate);
+        const futureDate = new Date(referenceDate);
+        futureDate.setDate(referenceDate.getDate() + daysAhead);
+
+        const pastDate = new Date(referenceDate);
+        pastDate.setDate(referenceDate.getDate() - daysBack);
+
+        // Set reference date to start of day for comparison
+        const referenceDateStart = new Date(referenceDate);
+        referenceDateStart.setHours(0, 0, 0, 0);
+        const referenceDateEnd = new Date(referenceDate);
+        referenceDateEnd.setHours(23, 59, 59, 999);
+
+        const hasVisitToday = entityVisits.some(v =>
+          v.fechaVisita >= referenceDateStart && v.fechaVisita <= referenceDateEnd
+        );
+
+        // Check if there's any planned visit in the next daysAhead days (from reference date)
+        const hasPlannedVisitSoon = entityVisits.some(
+          (v) => v.estatus === 'planeado' && v.fechaVisita &&
+                 v.fechaVisita >= referenceDate && v.fechaVisita <= futureDate
+        );
+
+        // Check if there's any visit/plan in the last daysBack days (from reference date)
+        const hasRecentActivity = entityVisits.filter(v => v.estatus === 'visitado')
+        .some(
+          (v) => v.fechaVisita && v.fechaVisita >= pastDate && v.fechaVisita <= referenceDate
+        );
+
+        // Pass filter if: NO planned visit soon AND NO recent activity
+        return hasVisitToday || (!hasPlannedVisitSoon && !hasRecentActivity);
       }
 
       return true;
@@ -188,7 +232,7 @@ export function MapFilters({ pharmacies, doctors, visits, onFilteredEntitiesChan
     }
 
     return entities;
-  }, [pharmacies, doctors, selectedBricks, showFarmacias, showMedicos, visitHistoryFilter, visits]);
+  }, [pharmacies, doctors, selectedBricks, showFarmacias, showMedicos, visitHistoryFilter, visits, selectedDate]);
 
   // Notify parent whenever filtered entities change
   useEffect(() => {
@@ -277,6 +321,9 @@ export function MapFilters({ pharmacies, doctors, visits, onFilteredEntitiesChan
           Mostrando ({filteredEntities.filter((e) => e.type === 'farmacia').length}/
           {pharmacies.length}) farmacias ({filteredEntities.filter((e) => e.type === 'medico').length}/{doctors.length}) médicos
         </Typography>
+        <Typography variant="caption" color="text.secondary">
+          📅 Fecha de referencia: {selectedDate}
+        </Typography>
         {visitHistoryFilter.type !== 'none' && (
           <Typography variant="caption" color="secondary.main" sx={{ fontWeight: 'bold' }}>
             {visitHistoryFilter.type === 'never-visited' && '🔍 Filtro: Nunca visitadas'}
@@ -285,6 +332,8 @@ export function MapFilters({ pharmacies, doctors, visits, onFilteredEntitiesChan
             {visitHistoryFilter.type === 'visited-within-days' &&
               `🔍 Filtro: Visitadas en los últimos ${visitHistoryFilter.daysSince} días`}
             {visitHistoryFilter.type === 'only-not-found' && '🔍 Filtro: Solo marcadas como "No encontrado"'}
+            {visitHistoryFilter.type === 'planning-focused' &&
+              `🔍 Filtro: Sin visita planificada en los siguientes ${visitHistoryFilter.daysAhead} días, ni actividad reciente (${visitHistoryFilter.daysBack}d)`}
           </Typography>
         )}
       </Stack>

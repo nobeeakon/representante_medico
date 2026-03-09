@@ -49,10 +49,10 @@ const getInitialState = (visit: Visita): DialogState => {
   let visitDate = '';
   let visitTime = '';
   if (visit.fechaVisita) {
-    const date = new Date(visit.fechaVisita);
-    visitDate = date.toISOString().split('T')[0];
-    const visitHours = date.getHours();
-    const visitMinutes = date.getMinutes();
+    // fechaVisita is already a Date object
+    visitDate = visit.fechaVisita.toISOString().split('T')[0];
+    const visitHours = visit.fechaVisita.getHours();
+    const visitMinutes = visit.fechaVisita.getMinutes();
     visitTime = `${String(visitHours).padStart(2, '0')}:${String(visitMinutes).padStart(2, '0')}`;
   }
 
@@ -122,7 +122,7 @@ export function EditVisitDialog({
 
       // Update actual visit date/time if provided
       if (state.data.visitDate && state.data.visitTime) {
-        updates.fechaVisita = `${state.data.visitDate}T${state.data.visitTime}:00`;
+        updates.fechaVisita = new Date(`${state.data.visitDate}T${state.data.visitTime}:00`);
       }
 
       await onSave(visit.id, updates);

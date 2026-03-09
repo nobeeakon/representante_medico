@@ -162,7 +162,7 @@ export function CreateVisitDialog({
       const dateTime = `${state.data.selectedDate}T${time}:00`;
 
       const newVisit: Omit<Visita, 'id' | 'createdAt'> = {
-        fechaVisita: dateTime,
+        fechaVisita: new Date(dateTime),
         fechaVisitaPlaneada: dateTime,
         entidadObjetivoTipo: state.data.selectedEntity.type,
         entidadObjetivoId: state.data.selectedEntity.id,

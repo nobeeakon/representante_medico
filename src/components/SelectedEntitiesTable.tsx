@@ -77,11 +77,10 @@ const Status = ({status, isSaved}:{status: string|null; isSaved?:boolean}) => {
 
 }
 
-const TimeDisplay = ({dateString}:{dateString?: string}) => {
+const TimeDisplay = ({dateString}:{dateString?: Date}) => {
   if (!dateString) return null;
 
-  const date = new Date(dateString);
-  const hours = date.getHours();
+  const hours = dateString.getHours();
   const hasValidTime = hours >= 6;
 
   return (
@@ -93,7 +92,7 @@ const TimeDisplay = ({dateString}:{dateString?: string}) => {
       }}
     >
       {hasValidTime
-        ? date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+        ? dateString.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
         : '--:--'}
     </Typography>
   );
@@ -105,8 +104,8 @@ type SelectedEntity =
   | { type: 'medico'; data: Medico; date?: string; estatus?: string};
 
 type SavedEntity =
-  | { type: 'farmacia'; data: Farmacia; visitId: string; visitDate: string; status: string }
-  | { type: 'medico'; data: Medico; visitId: string; visitDate: string; status: string };
+  | { type: 'farmacia'; data: Farmacia; visitId: string; visitDate: Date; status: string }
+  | { type: 'medico'; data: Medico; visitId: string; visitDate: Date; status: string };
 
 type VisitsQuery = {
   data: Visita[];
@@ -149,7 +148,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
 
   // Sort saved entities by date (earliest first)
   const sortedSavedEntities = [...savedEntities].sort((a, b) => {
-    return new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime();
+    return a.visitDate.getTime() - b.visitDate.getTime();
   });
 
   // Combine selected and saved entities for display
@@ -262,7 +261,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
         const dateTime = `${dateString}T${timeString}`;
 
         return {
-          fechaVisita: dateTime,
+          fechaVisita: new Date(dateTime),
           fechaVisitaPlaneada: dateTime,
           entidadObjetivoTipo: entity.type,
           entidadObjetivoId: entity.data.id,
@@ -337,7 +336,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
       const visitDate = updates.fechaVisita ?? draftVisit.fechaVisita;
       const newVisit: Omit<Visita, 'id' | 'createdAt'> = {
         fechaVisita: visitDate,
-        fechaVisitaPlaneada: visitDate, // Keep in sync for backward compatibility
+        fechaVisitaPlaneada: visitDate.toISOString(), // Keep in sync for backward compatibility
         entidadObjetivoTipo: draftVisit.entidadObjetivoTipo,
         entidadObjetivoId: draftVisit.entidadObjetivoId,
         estatus: updates.estatus ?? draftVisit.estatus,
@@ -363,7 +362,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
     const draft: Visita = {
       id: 'draft-' + Date.now(), // Temporary ID
       createdAt: new Date().toISOString(),
-      fechaVisita: plannedDateTime,
+      fechaVisita: new Date(plannedDateTime),
       fechaVisitaPlaneada: plannedDateTime,
       entidadObjetivoTipo: entity.type,
       entidadObjetivoId: entity.data.id,

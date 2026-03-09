@@ -48,9 +48,7 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
       )
       .sort((a, b) => {
         // Sort by visit date, most recent first
-        const dateA = new Date(a.fechaVisita).getTime();
-        const dateB = new Date(b.fechaVisita).getTime();
-        return dateB - dateA;
+        return b.fechaVisita.getTime() - a.fechaVisita.getTime();
       });
   }, [entity, visits]);
 
@@ -59,9 +57,8 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
   const entityName = entity.data.nombreCuenta || 'Sin nombre';
   const entityType = entity.type === 'medico' ? 'Médico' : 'Farmacia';
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '--';
-    const date = new Date(dateString);
+  const formatDate = (date?: Date) => {
+    if (!date) return '--';
     return date.toLocaleDateString('es-MX', {
       year: 'numeric',
       month: 'short',
@@ -69,9 +66,8 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
     });
   };
 
-  const formatTime = (dateString?: string) => {
-    if (!dateString) return '--';
-    const date = new Date(dateString);
+  const formatTime = (date?: Date) => {
+    if (!date) return '--';
     const hours = date.getHours();
     const hasValidTime = hours >= 6;
 
@@ -198,7 +194,7 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
                           '--'
                         )}
                       </TableCell>
-                      <TableCell>{formatDate(visit.createdAt)}</TableCell>
+                      <TableCell>{formatDate(new Date(visit.createdAt))}</TableCell>
                     </TableRow>
                   );
                 })}
