@@ -37,6 +37,7 @@ type DialogState = {
   loading: boolean;
   error: string | null;
   data: {
+    visitDate: string;
     visitTime: string;
     status: VisitaStatus;
     note: string;
@@ -44,12 +45,14 @@ type DialogState = {
 };
 
 const getInitialState = (visit: Visita): DialogState => {
-  // Extract time from actual visit date (if exists)
+  // Extract date and time from actual visit date (if exists)
+  let visitDate = '';
   let visitTime = '';
   if (visit.fechaVisita) {
-    const visitDate = new Date(visit.fechaVisita);
-    const visitHours = visitDate.getHours();
-    const visitMinutes = visitDate.getMinutes();
+    const date = new Date(visit.fechaVisita);
+    visitDate = date.toISOString().split('T')[0];
+    const visitHours = date.getHours();
+    const visitMinutes = date.getMinutes();
     visitTime = `${String(visitHours).padStart(2, '0')}:${String(visitMinutes).padStart(2, '0')}`;
   }
 
@@ -57,6 +60,7 @@ const getInitialState = (visit: Visita): DialogState => {
     loading: false,
     error: null,
     data: {
+      visitDate,
       visitTime,
       status: visit.estatus,
       note: visit.nota || '',
@@ -74,24 +78,15 @@ export function EditVisitDialog({
 }: EditVisitDialogProps) {
   const [state, setState] = useState<DialogState>(() => getInitialState(visit));
 
-  // Get the date part from the visit date
-  const dateString = useMemo(() => {
-    const date = new Date(visit.fechaVisita);
-    return date.toISOString().split('T')[0];
-  }, [visit.fechaVisita]);
-
   // Real-time validation
   const validationError = useMemo(() => {
-    // Cannot be "planeado" when there's a visit time
-    if (state.data.visitTime && state.data.status === 'planeado') {
-      return 'No se puede tener estatus "Planeado" cuando hay una hora de visita. Por favor cambia el estatus a "Visitado" o "No Encontrado".';
-    }
-    // Must have visit time when status is not "planeado"
-    if (!state.data.visitTime && state.data.status !== 'planeado') {
-      return 'Se requiere una hora de visita cuando el estatus es "Visitado" o "No Encontrado". Por favor agrega la hora de visita.';
+    const hasVisitDateTime = state.data.visitDate && state.data.visitTime;
+    // Must have visit date/time when status is "visitado" or "noEncontrado"
+    if (!hasVisitDateTime && state.data.status !== 'planeado') {
+      return 'Se requiere una fecha y hora de visita cuando el estatus es "Visitado" o "No Encontrado". Por favor agrega la fecha y hora de visita.';
     }
     return null;
-  }, [state.data.visitTime, state.data.status]);
+  }, [state.data.visitDate, state.data.visitTime, state.data.status]);
 
   // Set current time for visit time
   const handleSetCurrentTime = () => {
@@ -126,8 +121,8 @@ export function EditVisitDialog({
       };
 
       // Update actual visit date/time if provided
-      if (state.data.visitTime) {
-        updates.fechaVisita = `${dateString}T${state.data.visitTime}:00`;
+      if (state.data.visitDate && state.data.visitTime) {
+        updates.fechaVisita = `${state.data.visitDate}T${state.data.visitTime}:00`;
       }
 
       await onSave(visit.id, updates);
@@ -168,7 +163,27 @@ export function EditVisitDialog({
           </Typography>
         </Alert>
 
-        {/* Actual Visit Time */}
+        {/* Visit Date */}
+        <TextField
+          type="date"
+          label="Fecha de Visita"
+          value={state.data.visitDate}
+          onChange={(e) =>
+            setState((prev) => ({
+              ...prev,
+              data: { ...prev.data, visitDate: e.target.value },
+            }))
+          }
+          size="small"
+          slotProps={{
+            inputLabel: {
+              shrink: true,
+            },
+          }}
+          fullWidth
+        />
+
+        {/* Visit Time */}
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
           <TextField
             type="time"
@@ -181,10 +196,10 @@ export function EditVisitDialog({
               }))
             }
             size="small"
-            InputLabelProps={{
-              shrink: true,
-            }}
             slotProps={{
+              inputLabel: {
+                shrink: true,
+              },
               htmlInput: {
                 step: 60, // 1 minute
               },

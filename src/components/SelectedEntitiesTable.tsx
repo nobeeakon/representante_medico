@@ -678,6 +678,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                                 : 'default'
                             }
                             aria-label="resaltar en mapa"
+                            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
                           >
                             <MyLocationIcon fontSize="small" />
                           </IconButton>
@@ -708,6 +709,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                             onClick={() => handleDeleteVisit(item.visitId)}
                             color="error"
                             aria-label="eliminar visita"
+                            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
@@ -741,6 +743,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                                 : 'default'
                             }
                             aria-label="resaltar en mapa"
+                            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
                           >
                             <MyLocationIcon fontSize="small" />
                           </IconButton>
