@@ -18,15 +18,10 @@ import { Add as AddIcon, MyLocation as MyLocationIcon } from '@mui/icons-materia
 import type { Farmacia } from '../__types__/pharmacy';
 import type { Medico } from '../__types__/doctor';
 
-type CreateEntityDialogProps = {
-  onClose: () => void;
-  onSaveDoctor: (doctor: Omit<Medico, 'id' | 'createdAt'>) => Promise<void>;
-  onSavePharmacy: (pharmacy: Omit<Farmacia, 'id' | 'createdAt'>) => Promise<void>;
-};
 
 type EntityType = 'medico' | 'farmacia';
 
-type FormData = {
+export type FormData = {
   entityType: EntityType;
   // Common fields - all required as strings for form handling
   nombreCuenta: string;
@@ -63,6 +58,8 @@ type DialogState = {
   data: FormData;
 };
 
+
+
 const getInitialState = (): DialogState => ({
   loading: false,
   error: null,
@@ -95,12 +92,19 @@ const getInitialState = (): DialogState => ({
   },
 });
 
+type CreateEntityDialogProps = {
+  onClose: () => void;
+  onSave: (newItemInfo: {type: 'medico', data: Omit<Medico, 'id' | 'createdAt'> }|{type: 'farmacia', data: Omit<Farmacia, 'id' | 'createdAt'> } ) => Promise<void>;
+  entity?: FormData;
+};
+
+
 export function CreateEntityDialog({
   onClose,
-  onSaveDoctor,
-  onSavePharmacy,
+  onSave,
+  entity
 }: CreateEntityDialogProps) {
-  const [state, setState] = useState<DialogState>(getInitialState);
+  const [state, setState] = useState<DialogState>(() => !entity?getInitialState():{...getInitialState(), data: {...entity}});
 
   // Helper to update coordinates and Google Maps URL together
   const updateCoordinates = (lat?: number, lng?: number) => {
@@ -208,7 +212,7 @@ export function CreateEntityDialog({
           lng: state.data.lng,
           googleMapsUrl: state.data.googleMapsUrl.trim() || undefined,
         };
-        await onSaveDoctor(newDoctor);
+        await onSave({type: 'medico', data: newDoctor});
       } else {
         const newPharmacy: Omit<Farmacia, 'id' | 'createdAt'> = {
           nombreCuenta: state.data.nombreCuenta.trim() || undefined,
@@ -234,7 +238,8 @@ export function CreateEntityDialog({
           lng: state.data.lng,
           googleMapsUrl: state.data.googleMapsUrl.trim() || undefined,
         };
-        await onSavePharmacy(newPharmacy);
+        await onSave({type: 'farmacia', data: newPharmacy});
+
       }
 
       // Close dialog on success
@@ -259,7 +264,7 @@ export function CreateEntityDialog({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AddIcon />
           <Typography variant="h6" component="span">
-            Crear Nueva Entidad
+            Guardar Entidad
           </Typography>
         </Box>
       </DialogTitle>
@@ -632,7 +637,7 @@ export function CreateEntityDialog({
           disabled={state.loading || !!validationError}
           startIcon={state.loading ? <CircularProgress size={16} /> : <AddIcon />}
         >
-          {state.loading ? 'Guardando...' : `Crear ${state.data.entityType === 'medico' ? 'Médico' : 'Farmacia'}`}
+          {state.loading ? 'Guardando...' : `Guardar ${state.data.entityType === 'medico' ? 'Médico' : 'Farmacia'}`}
         </Button>
       </DialogActions>
     </Dialog>

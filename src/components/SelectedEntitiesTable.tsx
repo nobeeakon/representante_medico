@@ -20,6 +20,7 @@ import {
   MenuItem,
   Chip,
   OutlinedInput,
+  ButtonBase,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -29,6 +30,7 @@ import {
   MyLocation as MyLocationIcon,
   Save as SaveIcon,
   Edit as EditIcon,
+  Phone as PhoneIcon,
   Add as AddIcon,
   EventRepeat as EventRepeatIcon,
   History as HistoryIcon,
@@ -45,39 +47,36 @@ import type { Visita } from '../__types__/visita';
 
 // TODO complete the date planner: what happens when I update a planning, filter in the map, etc
 
+const STATUS_DISPLAY: Record<string, { text: string; color: string; bgColor: string }> = {
+  planeado: { text: 'Programado', color: '#1976d2', bgColor: '#e3f2fd' },
+  visitado: { text: 'Visitado', color: '#2e7d32', bgColor: '#e8f5e9' },
+  noEncontrado: { text: 'No Encontrado', color: '#d32f2f', bgColor: '#ffebee' },
+};
 
+const Status = ({ status, isSaved }: { status: string | null; isSaved?: boolean }) => {
+  const statusInfo = STATUS_DISPLAY[status ?? ''];
+  if (!statusInfo) return;
 
-const STATUS_DISPLAY: Record<string, {text: string; color: string; bgColor: string}> = {
-      planeado: { text: 'Programado', color: '#1976d2', bgColor: '#e3f2fd' },
-    visitado:{ text: 'Visitado', color: '#2e7d32', bgColor: '#e8f5e9' },
-    noEncontrado: { text: 'No Encontrado', color: '#d32f2f', bgColor: '#ffebee' },
-}
+  return (
+    <Typography
+      component="span"
+      sx={{
+        fontSize: '12px',
+        fontWeight: isSaved ? 'bold' : 'normal',
+        color: statusInfo.color,
+        backgroundColor: statusInfo.bgColor,
+        padding: '4px 8px',
+        borderRadius: '4px',
+        display: 'inline-block',
+        fontStyle: isSaved ? 'normal' : 'italic',
+      }}
+    >
+      {statusInfo.text}
+    </Typography>
+  );
+};
 
-const Status = ({status, isSaved}:{status: string|null; isSaved?:boolean}) => {
-  const statusInfo = STATUS_DISPLAY[status??''];
-        if (!statusInfo) return;
-
-                      return (
-                        <Typography
-                          component="span"
-                          sx={{
-                            fontSize: '12px',
-                            fontWeight: isSaved ? 'bold' : 'normal',
-                            color: statusInfo.color,
-                            backgroundColor: statusInfo.bgColor,
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            display: 'inline-block',
-                            fontStyle: isSaved ? 'normal' : 'italic',
-                          }}
-                        >
-                          {statusInfo.text}
-                        </Typography>
-                      );
-
-}
-
-const TimeDisplay = ({dateString}:{dateString?: Date}) => {
+const TimeDisplay = ({ dateString }: { dateString?: Date }) => {
   if (!dateString) return null;
 
   const hours = dateString.getHours();
@@ -96,12 +95,11 @@ const TimeDisplay = ({dateString}:{dateString?: Date}) => {
         : '--:--'}
     </Typography>
   );
-}
-
+};
 
 type SelectedEntity =
   | { type: 'farmacia'; data: Farmacia; date?: string; estatus?: string }
-  | { type: 'medico'; data: Medico; date?: string; estatus?: string};
+  | { type: 'medico'; data: Medico; date?: string; estatus?: string };
 
 type SavedEntity =
   | { type: 'farmacia'; data: Farmacia; visitId: string; visitDate: Date; status: string }
@@ -130,15 +128,32 @@ type SelectedEntitiesTableProps = {
   onUpdateEntities: (entities: SelectedEntity[]) => void;
   onToggleHighlight: (entity: { type: 'medico' | 'farmacia'; id: string }) => void;
   onDateChange: (date: string) => void;
+  onEditEntity: (entityInfo: { id: string; type: 'medico' | 'farmacia' }) => void;
 };
 
-export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, defaultRows, selectedDate, highlightedEntity, doctors, pharmacies, onUpdateEntities, onToggleHighlight, onDateChange }: SelectedEntitiesTableProps) {
+export function SelectedEntitiesTable({
+  entities,
+  savedEntities,
+  visitsQuery,
+  defaultRows,
+  selectedDate,
+  highlightedEntity,
+  doctors,
+  pharmacies,
+  onUpdateEntities,
+  onToggleHighlight,
+  onDateChange,
+  onEditEntity,
+}: SelectedEntitiesTableProps) {
   const visits = visitsQuery;
   const [isSaving, setIsSaving] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   const [draftVisit, setDraftVisit] = useState<Visita | null>(null);
-  const [historyEntity, setHistoryEntity] = useState<{ type: 'medico' | 'farmacia'; data: Medico | Farmacia } | null>(null);
+  const [historyEntity, setHistoryEntity] = useState<{
+    type: 'medico' | 'farmacia';
+    data: Medico | Farmacia;
+  } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [showMobileActions, setShowMobileActions] = useState(false);
@@ -155,9 +170,8 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
   const unfilteredEntities = useMemo(() => {
     const unfiltered = [...entities, ...sortedSavedEntities];
 
-
     return unfiltered;
-  }, [entities, sortedSavedEntities])
+  }, [entities, sortedSavedEntities]);
 
   // Filter entities based on search query and status
   const allEntities = useMemo(() => {
@@ -173,7 +187,9 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
           item.data.calle || '',
           item.data.colonia || '',
           item.data.nombreBrick || '',
-        ].join(' ').toLowerCase();
+        ]
+          .join(' ')
+          .toLowerCase();
         return searchableText.includes(query);
       });
     }
@@ -255,7 +271,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
       // Create visits with minute intervals starting at 0:00am
       const newVisits: Array<Omit<Visita, 'id' | 'createdAt'>> = entities.map((entity, index) => {
         // Calculate time: 0:00am + (index ) , this is to make it evident that the expected date was not set (non sensical)
-        const minutes = 0 + (index);
+        const minutes = 0 + index;
         const hours = 0;
         const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
         const dateTime = `${dateString}T${timeString}`;
@@ -307,7 +323,6 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
     }
   };
 
-
   // Handler to create a new visit from the dialog
   const handleCreateVisit = async (visit: Omit<Visita, 'id' | 'createdAt'>) => {
     await visits.add(visit);
@@ -316,7 +331,10 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
   };
 
   // Handler to update a visit from the edit dialog
-  const handleUpdateVisit = async (visitId: string, updates: Partial<Omit<Visita, 'id' | 'createdAt'>>) => {
+  const handleUpdateVisit = async (
+    visitId: string,
+    updates: Partial<Omit<Visita, 'id' | 'createdAt'>>
+  ) => {
     try {
       await visits.updateItem(visitId, updates);
       await visits.reload();
@@ -328,7 +346,10 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
   };
 
   // Handler to save a draft visit (creating it for the first time)
-  const handleSaveDraftVisit = async (_visitId: string, updates: Partial<Omit<Visita, 'id' | 'createdAt'>>) => {
+  const handleSaveDraftVisit = async (
+    _visitId: string,
+    updates: Partial<Omit<Visita, 'id' | 'createdAt'>>
+  ) => {
     if (!draftVisit) return;
 
     try {
@@ -376,7 +397,7 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
   // Find the visit being edited
   const editingVisit = useMemo(() => {
     if (!editingVisitId) return null;
-    return visits.data.find(v => v.id === editingVisitId);
+    return visits.data.find((v) => v.id === editingVisitId);
   }, [editingVisitId, visits.data]);
 
   // Find the entity for the editing visit
@@ -384,11 +405,13 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
     if (!editingVisit) return null;
 
     if (editingVisit.entidadObjetivoTipo === 'medico') {
-      const doctor = doctors.find(d => d.id === editingVisit.entidadObjetivoId);
+      const doctor = doctors.find((d) => d.id === editingVisit.entidadObjetivoId);
       return doctor ? { type: 'medico' as const, name: doctor.nombreCuenta || 'Sin nombre' } : null;
     } else {
-      const pharmacy = pharmacies.find(p => p.id === editingVisit.entidadObjetivoId);
-      return pharmacy ? { type: 'farmacia' as const, name: pharmacy.nombreCuenta || 'Sin nombre' } : null;
+      const pharmacy = pharmacies.find((p) => p.id === editingVisit.entidadObjetivoId);
+      return pharmacy
+        ? { type: 'farmacia' as const, name: pharmacy.nombreCuenta || 'Sin nombre' }
+        : null;
     }
   }, [editingVisit, doctors, pharmacies]);
 
@@ -397,11 +420,13 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
     if (!draftVisit) return null;
 
     if (draftVisit.entidadObjetivoTipo === 'medico') {
-      const doctor = doctors.find(d => d.id === draftVisit.entidadObjetivoId);
+      const doctor = doctors.find((d) => d.id === draftVisit.entidadObjetivoId);
       return doctor ? { type: 'medico' as const, name: doctor.nombreCuenta || 'Sin nombre' } : null;
     } else {
-      const pharmacy = pharmacies.find(p => p.id === draftVisit.entidadObjetivoId);
-      return pharmacy ? { type: 'farmacia' as const, name: pharmacy.nombreCuenta || 'Sin nombre' } : null;
+      const pharmacy = pharmacies.find((p) => p.id === draftVisit.entidadObjetivoId);
+      return pharmacy
+        ? { type: 'farmacia' as const, name: pharmacy.nombreCuenta || 'Sin nombre' }
+        : null;
     }
   }, [draftVisit, doctors, pharmacies]);
 
@@ -442,28 +467,33 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
           onClose={() => setHistoryEntity(null)}
         />
       )}
-      <Box sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between',
-        alignItems: { xs: 'stretch', sm: 'center' },
-        gap: 2,
-        mb: 2
-      }}>
-
-        <Box sx={{
+      <Box
+        sx={{
           display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
-          gap: 1,
-          alignItems: { xs: 'stretch', sm: 'center' }
-        }}>
-          {/* Primary actions - always visible */}
-          <Box sx={{
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          mb: 2,
+        }}
+      >
+        <Box
+          sx={{
             display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
             gap: 1,
-            alignItems: 'center',
-            flexWrap: { xs: 'nowrap', sm: 'wrap' }
-          }}>
+            alignItems: { xs: 'stretch', sm: 'center' },
+          }}
+        >
+          {/* Primary actions - always visible */}
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+              alignItems: 'center',
+              flexWrap: { xs: 'nowrap', sm: 'wrap' },
+            }}
+          >
             <Button
               variant="contained"
               color="success"
@@ -499,15 +529,17 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
           </Box>
 
           {/* Secondary actions - collapsible on mobile, always visible on desktop */}
-          <Box sx={{
-            display: {
-              xs: showMobileActions ? 'flex' : 'none',
-              sm: 'flex'
-            },
-            gap: 1,
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: { xs: 'stretch', sm: 'center' }
-          }}>
+          <Box
+            sx={{
+              display: {
+                xs: showMobileActions ? 'flex' : 'none',
+                sm: 'flex',
+              },
+              gap: 1,
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'stretch', sm: 'center' },
+            }}
+          >
             <Button
               variant="contained"
               color="primary"
@@ -531,12 +563,14 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
           </Box>
         </Box>
       </Box>
-      <Box sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        gap: 2,
-        mb: 2
-      }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2,
+          mb: 2,
+        }}
+      >
         <TextField
           label="Buscar"
           placeholder="Nombre, especialidad, calle, colonia..."
@@ -551,7 +585,11 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
             labelId="status-filter-label"
             multiple
             value={selectedStatuses}
-            onChange={(e) => setSelectedStatuses(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+            onChange={(e) =>
+              setSelectedStatuses(
+                typeof e.target.value === 'string' ? [e.target.value] : e.target.value
+              )
+            }
             input={<OutlinedInput label="Filtrar por estatus" />}
             renderValue={(selected) => (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -585,10 +623,10 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
         </FormControl>
       </Box>
       <Box px={2}>
-              <Typography variant="body2" color="text.secondary">
-           {farmaciasCount}/{unfilteredEntities.filter(item => item.type === 'farmacia').length} farmacias
-          , {medicosCount}/{unfilteredEntities.filter(item => item.type === 'medico').length} médicos
-          
+        <Typography variant="body2" color="text.secondary">
+          {farmaciasCount}/{unfilteredEntities.filter((item) => item.type === 'farmacia').length}{' '}
+          farmacias , {medicosCount}/
+          {unfilteredEntities.filter((item) => item.type === 'medico').length} médicos
         </Typography>
       </Box>
       <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
@@ -614,22 +652,29 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
               return (
                 <TableRow
                   key={isSaved ? `saved-${item.visitId}` : `${item.type}-${item.data.id}`}
-                  sx={isSaved && item.status ? { backgroundColor: STATUS_DISPLAY[item.status]?.bgColor || '#f0f9ff' } : {}}
+                  sx={
+                    isSaved && item.status
+                      ? { backgroundColor: STATUS_DISPLAY[item.status]?.bgColor || '#f0f9ff' }
+                      : {}
+                  }
                 >
-                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{index + 1}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    {index + 1}
+                  </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     {isSaved ? <TimeDisplay dateString={item.visitDate} /> : ''}
                   </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                    <Status
-                      isSaved={isSaved}
-                      status={isSaved?item.status:null}
-                    />
+                    <Status isSaved={isSaved} status={isSaved ? item.status : null} />
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Typography variant="body2">
-                        {item.data.nombreCuenta || 'Sin nombre'}
+                        <ButtonBase
+                          onClick={() => onEditEntity({ type: item.type, id: item.data.id })}
+                        >
+                          {item.data.nombreCuenta || 'Sin nombre'}
+                        </ButtonBase>
                       </Typography>
                       <Tooltip title="Ver historial de visitas">
                         <IconButton
@@ -640,14 +685,28 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                           <HistoryIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
+
+                      {!!item.data.phone && (
+                        <Box sx={{ display: { xs: 'initial', md: 'none' } }}>
+                          <a href={`tel:${item.data.phone}`}>
+                            <PhoneIcon fontSize="small" />
+                          </a>
+                        </Box>
+                      )}
                     </Box>
                   </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     {item.type === 'medico' ? item.data.especialidad || '' : ''}
                   </TableCell>
-                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{item.data.calle || ''}</TableCell>
-                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{item.data.colonia || ''}</TableCell>
-                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{item.data.nombreBrick || ''}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    {item.data.calle || ''}
+                  </TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    {item.data.colonia || ''}
+                  </TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    {item.data.nombreBrick || ''}
+                  </TableCell>
                   <TableCell>
                     {isSaved ? (
                       <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
@@ -663,16 +722,22 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                             <PlaceIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title={
-                          highlightedEntity && highlightedEntity.type === item.type && highlightedEntity.id === item.data.id
-                            ? 'Quitar resaltado'
-                            : 'Resaltar en mapa'
-                        }>
+                        <Tooltip
+                          title={
+                            highlightedEntity &&
+                            highlightedEntity.type === item.type &&
+                            highlightedEntity.id === item.data.id
+                              ? 'Quitar resaltado'
+                              : 'Resaltar en mapa'
+                          }
+                        >
                           <IconButton
                             size="small"
                             onClick={() => onToggleHighlight({ type: item.type, id: item.data.id })}
                             color={
-                              highlightedEntity && highlightedEntity.type === item.type && highlightedEntity.id === item.data.id
+                              highlightedEntity &&
+                              highlightedEntity.type === item.type &&
+                              highlightedEntity.id === item.data.id
                                 ? 'primary'
                                 : 'default'
                             }
@@ -728,16 +793,22 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
                             <PlaceIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title={
-                          highlightedEntity && highlightedEntity.type === item.type && highlightedEntity.id === item.data.id
-                            ? 'Quitar resaltado'
-                            : 'Resaltar en mapa'
-                        }>
+                        <Tooltip
+                          title={
+                            highlightedEntity &&
+                            highlightedEntity.type === item.type &&
+                            highlightedEntity.id === item.data.id
+                              ? 'Quitar resaltado'
+                              : 'Resaltar en mapa'
+                          }
+                        >
                           <IconButton
                             size="small"
                             onClick={() => handleToggleHighlight(index)}
                             color={
-                              highlightedEntity && highlightedEntity.type === item.type && highlightedEntity.id === item.data.id
+                              highlightedEntity &&
+                              highlightedEntity.type === item.type &&
+                              highlightedEntity.id === item.data.id
                                 ? 'primary'
                                 : 'default'
                             }
@@ -789,7 +860,9 @@ export function SelectedEntitiesTable({ entities, savedEntities, visitsQuery, de
             })}
             {Array.from({ length: emptyRowsCount }).map((_, index) => (
               <TableRow key={`empty-${index}`}>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{allEntities.length + index + 1}</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                  {allEntities.length + index + 1}
+                </TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell></TableCell>

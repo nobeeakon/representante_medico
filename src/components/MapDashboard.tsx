@@ -1,15 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
-import {
-  Box,
-  Container,
-  Stack,
-  Button,
-} from '@mui/material';
+import { Box, Container, Stack, Button } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { MapView } from './map/Map';
 import { SelectedEntitiesTable } from './SelectedEntitiesTable';
 import { GoogleAuth } from '../google-sheets/GoogleAuth';
-import { CreateEntityDialog } from './CreateEntityDialog';
+import { CreateEntityDialog, type FormData } from './CreateEntityDialog';
 import { ManageProductsDialog } from './ManageProductsDialog';
 import { MapFilters } from './MapFilters';
 import { useDateUrlSync } from './useTableUrlSync';
@@ -40,7 +35,12 @@ type MapDashboardProps = {
   productosQuery: QueryInterface<Producto>;
 };
 
-export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, productosQuery }: MapDashboardProps) {
+export function MapDashboard({
+  pharmaciesQuery,
+  doctorsQuery,
+  visitsQuery,
+  productosQuery,
+}: MapDashboardProps) {
   const pharmacies = pharmaciesQuery.data;
   const doctors = doctorsQuery.data;
   const visits = visitsQuery.data;
@@ -48,10 +48,7 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
     Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }>
   >([]);
   const [selectedEntities, setSelectedEntities] = useState<
-    Array<
-      | { type: 'farmacia'; data: Farmacia }
-      | { type: 'medico'; data: Medico }
-    >
+    Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }>
   >([]);
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
@@ -62,10 +59,14 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
   // Sync selected date with URL query parameter
   useDateUrlSync(selectedDate, setSelectedDate);
 
-  const [highlightedEntity, setHighlightedEntity] = useState<{ type: 'medico' | 'farmacia'; id: string } | null>(null);
-  const [showCreateEntityDialog, setShowCreateEntityDialog] = useState(false);
+  const [highlightedEntity, setHighlightedEntity] = useState<{
+    type: 'medico' | 'farmacia';
+    id: string;
+  } | null>(null);
+  const [showCreateEntityDialog, setShowCreateEntityDialog] = useState<
+    true | null | { type: 'medico' | 'farmacia'; id: string }
+  >(null);
   const [showManageProductsDialog, setShowManageProductsDialog] = useState(false);
-
 
   // Handler to toggle entity selection (supports single or multiple entities)
   const toggleEntitySelection = (entities: Array<{ type: 'farmacia' | 'medico'; id: string }>) => {
@@ -84,8 +85,7 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
     } else {
       // If any are not selected, select all that aren't already selected
       const newEntities: Array<
-        | { type: 'farmacia'; data: Farmacia }
-        | { type: 'medico'; data: Medico }
+        { type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }
       > = [];
 
       entities.forEach((entity) => {
@@ -114,70 +114,82 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
     }
   };
 
-
   const savedEntities = useMemo(() => {
-      // Filter visits for the selected date (comparing dates at day level in local timezone)
-      // Parse date string as local time, not UTC
-      const [year, month, day] = selectedDate.split('-').map(Number);
-      const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
-      const nextDay = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
+    // Filter visits for the selected date (comparing dates at day level in local timezone)
+    // Parse date string as local time, not UTC
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const nextDay = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
 
-      const visitsTargetDate = visits.filter(visitItem => {
-        return visitItem.fechaVisita >= selectedDateObj && visitItem.fechaVisita < nextDay;
-      });
+    const visitsTargetDate = visits.filter((visitItem) => {
+      return visitItem.fechaVisita >= selectedDateObj && visitItem.fechaVisita < nextDay;
+    });
 
-      const visitsMap: {
-        medico: Map<string, Array<{visitId: string; visitDate: Date; status: VisitaStatus}>>;
-        farmacia: Map<string, Array<{visitId: string; visitDate: Date; status: VisitaStatus}>>;
-      } = {medico: new Map(), farmacia: new Map()};
+    const visitsMap: {
+      medico: Map<string, Array<{ visitId: string; visitDate: Date; status: VisitaStatus }>>;
+      farmacia: Map<string, Array<{ visitId: string; visitDate: Date; status: VisitaStatus }>>;
+    } = { medico: new Map(), farmacia: new Map() };
 
-      visitsTargetDate.forEach(visitItem => {
-        const visitData = {visitId: visitItem.id, visitDate: visitItem.fechaVisita, status: visitItem.estatus};
+    visitsTargetDate.forEach((visitItem) => {
+      const visitData = {
+        visitId: visitItem.id,
+        visitDate: visitItem.fechaVisita,
+        status: visitItem.estatus,
+      };
 
-        if (visitItem.entidadObjetivoTipo === 'farmacia') {
-          const currentVisits = visitsMap.farmacia.get(visitItem.entidadObjetivoId) ?? [];
-          visitsMap.farmacia.set(visitItem.entidadObjetivoId, [...currentVisits, visitData]);
-        } else if(visitItem.entidadObjetivoTipo === 'medico') {
-          const currentVisits = visitsMap.medico.get(visitItem.entidadObjetivoId) ?? [];
-          visitsMap.medico.set(visitItem.entidadObjetivoId, [...currentVisits, visitData]);
+      if (visitItem.entidadObjetivoTipo === 'farmacia') {
+        const currentVisits = visitsMap.farmacia.get(visitItem.entidadObjetivoId) ?? [];
+        visitsMap.farmacia.set(visitItem.entidadObjetivoId, [...currentVisits, visitData]);
+      } else if (visitItem.entidadObjetivoTipo === 'medico') {
+        const currentVisits = visitsMap.medico.get(visitItem.entidadObjetivoId) ?? [];
+        visitsMap.medico.set(visitItem.entidadObjetivoId, [...currentVisits, visitData]);
+      }
+    });
+
+    const doctorsVisits = doctors
+      .map((doctorItem) => {
+        const visitData = visitsMap.medico.get(doctorItem.id);
+        if (!visitData) {
+          return null;
         }
-      });
 
-      const doctorsVisits = doctors
-        .map(doctorItem =>  {
-          const visitData = visitsMap.medico.get(doctorItem.id);
-          if (!visitData) {
-            return null;
-          }
+        return visitData.map((visitItem) => ({
+          type: 'medico' as const,
+          data: doctorItem,
+          ...visitItem,
+        }));
+      })
+      .filter(nonNullable)
+      .flat();
 
-          return visitData.map(visitItem => ({type: 'medico' as const, data: doctorItem, ...visitItem}));
-        })
-        .filter(nonNullable)
-        .flat();
+    const pharmaciesVisits = pharmacies
+      .map((pharmacyItem) => {
+        const visitData = visitsMap.farmacia.get(pharmacyItem.id);
+        if (!visitData || visitData.length === 0) {
+          return null;
+        }
 
-      const pharmaciesVisits = pharmacies
-        .map(pharmacyItem =>  {
-          const visitData = visitsMap.farmacia.get(pharmacyItem.id);
-          if (!visitData || visitData.length === 0) {
-            return null;
-          }
+        return visitData.map((visitItem) => ({
+          type: 'farmacia' as const,
+          data: pharmacyItem,
+          ...visitItem,
+        }));
+      })
+      .filter(nonNullable)
+      .flat();
 
-          return visitData.map(visitItem => ({type: 'farmacia' as const, data: pharmacyItem, ...visitItem}));
-        })
-        .filter(nonNullable)
-        .flat();
+    return [...doctorsVisits, ...pharmaciesVisits];
+  }, [selectedDate, visits, pharmacies, doctors]);
 
-      return [...doctorsVisits, ...pharmaciesVisits];
-
-  }, [selectedDate, visits, pharmacies, doctors])
-
-
-  const handleFilteredEntitiesChange = useCallback((entities: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }>) => {
-    setMapFilteredEntities(entities);
-  }, []);
+  const handleFilteredEntitiesChange = useCallback(
+    (entities: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }>) => {
+      setMapFilteredEntities(entities);
+    },
+    []
+  );
 
   const toggleHighlight = (entity: { type: 'medico' | 'farmacia'; id: string }) => {
-    setHighlightedEntity(prev => {
+    setHighlightedEntity((prev) => {
       // If the same entity is already highlighted, unhighlight it
       if (prev && prev.type === entity.type && prev.id === entity.id) {
         return null;
@@ -187,43 +199,154 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
     });
   };
 
-  // Handle saving new doctor
-  const handleSaveDoctor = async (doctor: Omit<Medico, 'id' | 'createdAt'>) => {
-    await doctorsQuery.add(doctor);
+  const handleUpdateOrSaveEntity = async (
+    newItemInfo:
+      | { type: 'medico'; data: Omit<Medico, 'id' | 'createdAt'> }
+      | { type: 'farmacia'; data: Omit<Farmacia, 'id' | 'createdAt'> }
+  ) => {
+    const isUpdate = !!showCreateEntityDialog && typeof showCreateEntityDialog === 'object';
+
+    try {
+      if (!isUpdate) {
+        if (newItemInfo.type === 'medico') {
+          await doctorsQuery.add(newItemInfo.data);
+        } else if (newItemInfo.type === 'farmacia') {
+          await pharmaciesQuery.add(newItemInfo.data);
+        }
+        console.log(`Successfully saved new entity`);
+      } else {
+        if (newItemInfo.type === 'medico') {
+          const targetItem = doctorsQuery.data.find(
+            (pharmacyItem) => pharmacyItem.id === showCreateEntityDialog.id
+          );
+          if (targetItem) {
+            await doctorsQuery.updateItem(targetItem.id, { ...targetItem, ...newItemInfo.data });
+            await doctorsQuery.reload();
+          }
+        } else if (newItemInfo.type === 'farmacia') {
+          const targetItem = pharmaciesQuery.data.find(
+            (pharmacyItem) => pharmacyItem.id === showCreateEntityDialog.id
+          );
+          if (targetItem) {
+            await pharmaciesQuery.updateItem(targetItem.id, { ...targetItem, ...newItemInfo.data });
+            await pharmaciesQuery.reload();
+          }
+        }
+
+        console.log(`Successfully updated the Medico`);
+      }
+      alert(isUpdate ? 'Actualizado' : 'Nuevo medico agregado');
+    } catch (error) {
+      console.error(`Error al ${isUpdate ? 'actualizar' : 'agregar'}:`, error);
+      alert(
+        `Error al ${isUpdate ? 'Actualizado' : 'agregar'} un item. Por favor intenta de nuevo.`
+      );
+    }
   };
 
-  // Handle saving new pharmacy
-  const handleSavePharmacy = async (pharmacy: Omit<Farmacia, 'id' | 'createdAt'>) => {
-    await pharmaciesQuery.add(pharmacy);
+  const onEditEntity = (entityInfo: { id: string; type: 'medico' | 'farmacia' }) => {
+    setShowCreateEntityDialog({ id: entityInfo.id, type: entityInfo.type });
   };
 
+  const entityToEdit = useMemo<undefined | FormData>(() => {
+    if (!showCreateEntityDialog || typeof showCreateEntityDialog !== 'object') {
+      return undefined;
+    }
+
+    if (showCreateEntityDialog.type === 'farmacia') {
+      const targetItem = pharmacies.find(
+        (pharmacyItem) => pharmacyItem.id === showCreateEntityDialog.id
+      );
+
+      if (targetItem) {
+        return {
+          entityType: 'farmacia' as const,
+          nombreCuenta: targetItem.nombreCuenta ?? '',
+          email: targetItem.email ?? '',
+          phone: targetItem.phone ?? '',
+          estado: targetItem.estado ?? '',
+          municipio: targetItem.municipio ?? '',
+          colonia: targetItem.colonia ?? '',
+          calle: targetItem.calle ?? '',
+          codigoPostal: targetItem.codigoPostal ?? '',
+          especialidad: targetItem.especialidad ?? '',
+          estatus: targetItem.estatus ?? '',
+          lat: targetItem.lat,
+          lng: targetItem.lng,
+          googleMapsUrl: targetItem.googleMapsUrl ?? '',
+          territorio: targetItem.territorio ?? '',
+          pais: targetItem.pais ?? '',
+          ruta: targetItem.ruta ?? '',
+          plantillaClientes: targetItem.plantillaClientes ?? '',
+          folioTienda: targetItem.folioTienda ?? '',
+          cedulaProfesional: targetItem.cedulaProfesional ?? '',
+          grupoCadena: targetItem.grupoCadena ?? '',
+          categoriaMedico: targetItem.categoriaMedico ?? '',
+          propietarioCuenta: targetItem.propietarioCuenta ?? '',
+          ciudad: '',
+        };
+      }
+    } else if (showCreateEntityDialog.type === 'medico') {
+      const targetItem = doctors.find(
+        (pharmacyItem) => pharmacyItem.id === showCreateEntityDialog.id
+      );
+
+      if (targetItem) {
+        return {
+          entityType: 'medico' as const,
+          nombreCuenta: targetItem.nombreCuenta ?? '',
+          email: targetItem.email ?? '',
+          phone: targetItem.phone ?? '',
+          estado: targetItem.estado ?? '',
+          municipio: '',
+          colonia: targetItem.colonia ?? '',
+          calle: targetItem.calle ?? '',
+          codigoPostal: targetItem.codigoPostal ?? '',
+          especialidad: targetItem.especialidad ?? '',
+          estatus: targetItem.estatus ?? '',
+          lat: targetItem.lat,
+          lng: targetItem.lng,
+          googleMapsUrl: targetItem.googleMapsUrl ?? '',
+          territorio: '',
+          pais: '',
+          ruta: '',
+          plantillaClientes: '',
+          folioTienda: '',
+          cedulaProfesional: '',
+          grupoCadena: '',
+          categoriaMedico: '',
+          propietarioCuenta: '',
+          ciudad: targetItem.ciudad ?? '',
+        };
+      }
+    }
+  }, [showCreateEntityDialog, pharmacies, doctors]);
 
   return (
-    <Container maxWidth='xl' sx={{ py: 3 }}>
+    <Container maxWidth="xl" sx={{ py: 3 }}>
       <Stack spacing={3}>
         {/* Header */}
         <Box sx={{ textAlign: 'center' }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
             <GoogleAuth />
-              <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => setShowCreateEntityDialog(true)}
-          >
-            Entidad
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => setShowManageProductsDialog(true)}
-          >
-            Prod
-          </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => setShowCreateEntityDialog(true)}
+            >
+              Entidad
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => setShowManageProductsDialog(true)}
+            >
+              Prod
+            </Button>
           </Box>
         </Box>
-
 
         {/* Selected Entities Table */}
         <SelectedEntitiesTable
@@ -238,6 +361,7 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
           highlightedEntity={highlightedEntity}
           onToggleHighlight={toggleHighlight}
           onDateChange={setSelectedDate}
+          onEditEntity={onEditEntity}
         />
 
         {/* Map Filters */}
@@ -262,11 +386,11 @@ export function MapDashboard({ pharmaciesQuery, doctorsQuery, visitsQuery, produ
       </Stack>
 
       {/* Create Entity Dialog */}
-      {showCreateEntityDialog && (
+      {!!showCreateEntityDialog && (
         <CreateEntityDialog
-          onClose={() => setShowCreateEntityDialog(false)}
-          onSaveDoctor={handleSaveDoctor}
-          onSavePharmacy={handleSavePharmacy}
+          onClose={() => setShowCreateEntityDialog(null)}
+          onSave={handleUpdateOrSaveEntity}
+          entity={entityToEdit}
         />
       )}
 
