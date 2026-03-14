@@ -10,7 +10,7 @@ export type VisitaEntidadObjetivo = 'medico' | 'farmacia';
 
 export type Visita = {
   id: string;
-  createdAt: string;
+  createdAt: Date;
   fechaVisita: Date;
   /** @deprecated Only kept for backward compatibility. Use fechaVisita instead. */
   fechaVisitaPlaneada: string;

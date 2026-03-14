@@ -8,9 +8,13 @@ import {
   Collapse,
   Chip,
   Typography,
+  TextField,
 } from '@mui/material';
-import { BrickFilter, NO_BRICK } from './BrickFilter';
-import { VisitHistoryFilterDialog, type VisitHistoryFilterConfig } from './VisitHistoryFilterDialog';
+import { OptionsFilter, NO_DATA_OPTION } from './OptionsFilter';
+import {
+  VisitHistoryFilterDialog,
+  type VisitHistoryFilterConfig,
+} from './VisitHistoryFilterDialog';
 import type { Farmacia } from '../__types__/pharmacy';
 import type { Medico } from '../__types__/doctor';
 import type { Visita } from '../__types__/visita';
@@ -20,7 +24,9 @@ type MapFiltersProps = {
   doctors: Medico[];
   visits: Visita[];
   selectedDate: string;
-  onFilteredEntitiesChange: (entities: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }>) => void;
+  onFilteredEntitiesChange: (
+    entities: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }>
+  ) => void;
 };
 
 // Extracts unique brick names from entities, sorted alphabetically
@@ -40,199 +46,342 @@ function getAvailableBricks(entities: Array<{ nombreBrick?: string }>): string[]
   const bricksArray = Array.from(brickSet).sort();
 
   if (hasUndefinedBrick) {
-    bricksArray.push(NO_BRICK);
+    bricksArray.push(NO_DATA_OPTION);
   }
 
   return bricksArray;
 }
 
-export function MapFilters({ pharmacies, doctors, visits, selectedDate, onFilteredEntitiesChange }: MapFiltersProps) {
+function getAvailablePostalCodes(entities: Array<{ codigoPostal?: string }>): string[] {
+  const postalCodeSet = new Set<string>();
+  let hasUndefinedBrick = false;
+
+  entities.forEach((entity) => {
+    if (entity.codigoPostal) {
+      postalCodeSet.add(entity.codigoPostal);
+    } else {
+      hasUndefinedBrick = true;
+    }
+  });
+
+  const bricksArray = Array.from(postalCodeSet).sort();
+
+  if (hasUndefinedBrick) {
+    bricksArray.push(NO_DATA_OPTION);
+  }
+
+  return bricksArray;
+}
+
+// Helper to parse date string in local timezone (not UTC)
+const parseDateLocal = (dateStr: string): Date => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+};
+
+const getToday = () => {
+  const now = new Date();
+
+  now.setHours(0, 0, 0, 0);
+
+  return now;
+};
+
+const ONE_DAY_MS = 1000 * 60 * 60 * 24;
+const getDatesDiff = (date1: Date, date2: Date) => {
+  const duplicateDate1 = new Date(date1);
+  const duplicateDate2 = new Date(date2);
+
+  duplicateDate1.setHours(0, 0, 0, 0);
+  duplicateDate2.setHours(0, 0, 0, 0);
+
+  return Math.floor((duplicateDate1.getTime() - duplicateDate2.getTime()) / ONE_DAY_MS);
+};
+
+const passesVisitHistoryFilter = (
+  entityType: 'farmacia' | 'medico',
+  entityId: string,
+  visitHistoryFilter: VisitHistoryFilterConfig,
+  selectedDate: string,
+  visits: Visita[]
+): boolean => {
+  if (visitHistoryFilter.type === 'none') {
+    return true;
+  }
+
+  // Get all visits for this entity
+  const entityVisits = visits.filter(
+    (v) => v.entidadObjetivoTipo === entityType && v.entidadObjetivoId === entityId
+  );
+
+  if (visitHistoryFilter.type === 'never-visited') {
+    return entityVisits.length === 0;
+  }
+
+  if (visitHistoryFilter.type === 'only-not-found') {
+    // Entity must have at least one visit and all visits must be "noEncontrado"
+    if (entityVisits.length === 0) {
+      return false;
+    }
+    return entityVisits.every((v) => v.estatus === 'noEncontrado');
+  }
+
+  if (visitHistoryFilter.type === 'not-visited-since') {
+    const daysThreshold = visitHistoryFilter.daysSince ?? 30;
+    const referenceDate = parseDateLocal(selectedDate);
+    const thresholdDate = new Date(referenceDate);
+    thresholdDate.setDate(referenceDate.getDate() - daysThreshold);
+
+    // No visits at all means it passes
+    if (entityVisits.length === 0) {
+      return true;
+    }
+
+    // Get the most recent visit date
+    const mostRecentVisit = entityVisits
+      .filter((v) => v.fechaVisita) // Only consider visits with actual visit date
+      .sort((a, b) => b.fechaVisita.getTime() - a.fechaVisita.getTime())
+      .at(0);
+
+    // If no visits with actual dates, consider it as never visited
+    if (!mostRecentVisit || !mostRecentVisit.fechaVisita) {
+      return true;
+    }
+
+    // Check if most recent visit is older than threshold
+    return mostRecentVisit.fechaVisita < thresholdDate;
+  }
+
+  if (visitHistoryFilter.type === 'visited-within-days') {
+    const daysThreshold = visitHistoryFilter.daysSince ?? 30;
+    const referenceDate = parseDateLocal(selectedDate);
+    const thresholdDate = new Date(referenceDate);
+    thresholdDate.setDate(referenceDate.getDate() - daysThreshold);
+
+    // No visits at all means it doesn't pass
+    if (entityVisits.length === 0) {
+      return false;
+    }
+
+    // Get the most recent visit date
+    const mostRecentVisit = entityVisits
+      .filter((v) => v.fechaVisita) // Only consider visits with actual visit date
+      .sort((a, b) => b.fechaVisita.getTime() - a.fechaVisita.getTime())
+      .at(0);
+
+    // If no visits with actual dates, doesn't pass
+    if (!mostRecentVisit || !mostRecentVisit.fechaVisita) {
+      return false;
+    }
+
+    // Check if most recent visit is within the threshold (newer than or equal to threshold)
+    return mostRecentVisit.fechaVisita >= thresholdDate;
+  }
+
+  if (visitHistoryFilter.type === 'planning-focused') {
+    const daysAhead = visitHistoryFilter.daysAhead ?? 7;
+    const daysBack = visitHistoryFilter.daysBack ?? 30;
+
+    const referenceDate = parseDateLocal(selectedDate);
+    const futureDate = new Date(referenceDate);
+    futureDate.setDate(referenceDate.getDate() + daysAhead);
+
+    const pastDate = new Date(referenceDate);
+    pastDate.setDate(referenceDate.getDate() - daysBack);
+
+    // Set reference date to start of day for comparison
+    const referenceDateStart = new Date(referenceDate);
+    referenceDateStart.setHours(0, 0, 0, 0);
+    const referenceDateEnd = new Date(referenceDate);
+    referenceDateEnd.setHours(23, 59, 59, 999);
+
+    const hasVisitToday = entityVisits.some(
+      (v) => v.fechaVisita >= referenceDateStart && v.fechaVisita <= referenceDateEnd
+    );
+
+    // Check if there's any planned visit in the next daysAhead days (from reference date)
+    const hasPlannedVisitSoon = entityVisits.some(
+      (v) =>
+        v.estatus === 'planeado' &&
+        v.fechaVisita &&
+        v.fechaVisita >= referenceDate &&
+        v.fechaVisita <= futureDate
+    );
+
+    // Check if there's any visit/plan in the last daysBack days (from reference date)
+    const hasRecentActivity = entityVisits
+      .filter((v) => v.estatus === 'visitado')
+      .some((v) => v.fechaVisita && v.fechaVisita >= pastDate && v.fechaVisita <= referenceDate);
+
+    // Pass filter if: NO planned visit soon AND NO recent activity
+    return hasVisitToday || (!hasPlannedVisitSoon && !hasRecentActivity);
+  }
+
+  return true;
+};
+
+export function MapFilters({
+  pharmacies,
+  doctors,
+  visits,
+  selectedDate,
+  onFilteredEntitiesChange,
+}: MapFiltersProps) {
   const [selectedBricks, setSelectedBricks] = useState<string[]>([]);
+  const [selectedPostalCodes, setSelectedPostalCodes] = useState<string[]>([]);
+  const [createdDaysAgo, setCreatedDaysAgo] = useState<number | null>(null);
   const [showFarmacias, setShowFarmacias] = useState<boolean>(true);
   const [showMedicos, setShowMedicos] = useState<boolean>(true);
-  const [filterVisibility, setFilterVisibility] = useState<{
-    brickFilter: boolean;
-    entityTypeFilter: boolean;
-  }>({ brickFilter: false, entityTypeFilter: false });
+  const [filterVisibility, setFilterVisibility] = useState({
+    brickFilter: false,
+    entityTypeFilter: false,
+    recentlyCreated: false,
+    postalCodeTypeFilter: false,
+  });
   const [showVisitHistoryFilterDialog, setShowVisitHistoryFilterDialog] = useState(false);
-  const [visitHistoryFilter, setVisitHistoryFilter] = useState<VisitHistoryFilterConfig>({ type: 'none' });
+  const [visitHistoryFilter, setVisitHistoryFilter] = useState<VisitHistoryFilterConfig>({
+    type: 'none',
+  });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const availableBricks = useMemo(
     () => getAvailableBricks([...pharmacies, ...doctors]),
     [pharmacies, doctors]
   );
 
+  const availablePostalCode = useMemo(
+    () => getAvailablePostalCodes([...pharmacies, ...doctors]),
+    [pharmacies, doctors]
+  );
+
+  const isFilterToday = parseDateLocal(selectedDate).getDate() === getToday().getDate();
+
   // Filter entities based on selected bricks, visibility toggles, and visit history
   const filteredEntities = useMemo(() => {
-    // Helper to parse date string in local timezone (not UTC)
-    const parseDateLocal = (dateStr: string): Date => {
-      const [year, month, day] = dateStr.split('-').map(Number);
-      return new Date(year, month - 1, day, 0, 0, 0, 0);
-    };
-
     // Helper function to check if an entity passes the visit history filter
-    const passesVisitHistoryFilter = (entityType: 'farmacia' | 'medico', entityId: string): boolean => {
-      if (visitHistoryFilter.type === 'none') {
-        return true;
-      }
 
-      // Get all visits for this entity
-      const entityVisits = visits.filter(
-        (v) => v.entidadObjetivoTipo === entityType && v.entidadObjetivoId === entityId
-      );
+    const entities: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }> =
+      [];
 
-      if (visitHistoryFilter.type === 'never-visited') {
-        return entityVisits.length === 0;
-      }
-
-      if (visitHistoryFilter.type === 'only-not-found') {
-        // Entity must have at least one visit and all visits must be "noEncontrado"
-        if (entityVisits.length === 0) {
-          return false;
-        }
-        return entityVisits.every((v) => v.estatus === 'noEncontrado');
-      }
-
-      if (visitHistoryFilter.type === 'not-visited-since') {
-        const daysThreshold = visitHistoryFilter.daysSince ?? 30;
-        const referenceDate = parseDateLocal(selectedDate);
-        const thresholdDate = new Date(referenceDate);
-        thresholdDate.setDate(referenceDate.getDate() - daysThreshold);
-
-        // No visits at all means it passes
-        if (entityVisits.length === 0) {
-          return true;
-        }
-
-        // Get the most recent visit date
-        const mostRecentVisit = entityVisits
-          .filter((v) => v.fechaVisita) // Only consider visits with actual visit date
-          .sort((a, b) => b.fechaVisita.getTime() - a.fechaVisita.getTime())
-          .at(0);
-
-        // If no visits with actual dates, consider it as never visited
-        if (!mostRecentVisit || !mostRecentVisit.fechaVisita) {
-          return true;
-        }
-
-        // Check if most recent visit is older than threshold
-        return mostRecentVisit.fechaVisita < thresholdDate;
-      }
-
-      if (visitHistoryFilter.type === 'visited-within-days') {
-        const daysThreshold = visitHistoryFilter.daysSince ?? 30;
-        const referenceDate = parseDateLocal(selectedDate);
-        const thresholdDate = new Date(referenceDate);
-        thresholdDate.setDate(referenceDate.getDate() - daysThreshold);
-
-        // No visits at all means it doesn't pass
-        if (entityVisits.length === 0) {
-          return false;
-        }
-
-        // Get the most recent visit date
-        const mostRecentVisit = entityVisits
-          .filter((v) => v.fechaVisita) // Only consider visits with actual visit date
-          .sort((a, b) => b.fechaVisita.getTime() - a.fechaVisita.getTime())
-          .at(0);
-
-        // If no visits with actual dates, doesn't pass
-        if (!mostRecentVisit || !mostRecentVisit.fechaVisita) {
-          return false;
-        }
-
-        // Check if most recent visit is within the threshold (newer than or equal to threshold)
-        return mostRecentVisit.fechaVisita >= thresholdDate;
-      }
-
-      if (visitHistoryFilter.type === 'planning-focused') {
-        const daysAhead = visitHistoryFilter.daysAhead ?? 7;
-        const daysBack = visitHistoryFilter.daysBack ?? 30;
-
-        const referenceDate = parseDateLocal(selectedDate);
-        const futureDate = new Date(referenceDate);
-        futureDate.setDate(referenceDate.getDate() + daysAhead);
-
-        const pastDate = new Date(referenceDate);
-        pastDate.setDate(referenceDate.getDate() - daysBack);
-
-        // Set reference date to start of day for comparison
-        const referenceDateStart = new Date(referenceDate);
-        referenceDateStart.setHours(0, 0, 0, 0);
-        const referenceDateEnd = new Date(referenceDate);
-        referenceDateEnd.setHours(23, 59, 59, 999);
-
-        const hasVisitToday = entityVisits.some(v =>
-          v.fechaVisita >= referenceDateStart && v.fechaVisita <= referenceDateEnd
-        );
-
-        // Check if there's any planned visit in the next daysAhead days (from reference date)
-        const hasPlannedVisitSoon = entityVisits.some(
-          (v) => v.estatus === 'planeado' && v.fechaVisita &&
-                 v.fechaVisita >= referenceDate && v.fechaVisita <= futureDate
-        );
-
-        // Check if there's any visit/plan in the last daysBack days (from reference date)
-        const hasRecentActivity = entityVisits.filter(v => v.estatus === 'visitado')
-        .some(
-          (v) => v.fechaVisita && v.fechaVisita >= pastDate && v.fechaVisita <= referenceDate
-        );
-
-        // Pass filter if: NO planned visit soon AND NO recent activity
-        return hasVisitToday || (!hasPlannedVisitSoon && !hasRecentActivity);
-      }
-
-      return true;
-    };
-
-    const entities: Array<{ type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }> = [];
+    const cleanSearchQuery = searchQuery.trim().toLocaleLowerCase();
 
     // Add filtered pharmacies
     if (showFarmacias) {
-      const farmaciasToAdd =
-        selectedBricks.length === 0
-          ? pharmacies
-          : pharmacies.filter((farmacia) => {
-              if (selectedBricks.includes(NO_BRICK) && !farmacia.nombreBrick) {
-                return true;
-              }
-              return farmacia.nombreBrick && selectedBricks.includes(farmacia.nombreBrick);
-            });
+      let farmaciasFiltered = [...pharmacies];
 
-      // Apply visit history filter
-      const farmaciasWithVisitFilter = farmaciasToAdd.filter((farmacia) =>
-        passesVisitHistoryFilter('farmacia', farmacia.id)
-      );
+      if (selectedBricks.length > 0) {
+        farmaciasFiltered = farmaciasFiltered.filter((farmacia) => {
+          if (selectedBricks.includes(NO_DATA_OPTION) && !farmacia.nombreBrick) {
+            return true;
+          }
+          return farmacia.nombreBrick && selectedBricks.includes(farmacia.nombreBrick);
+        });
+      }
 
-      farmaciasWithVisitFilter.forEach((farmacia) => {
-        entities.push({ type: 'farmacia', data: farmacia });
-      });
+      if (selectedPostalCodes.length > 0) {
+        farmaciasFiltered = farmaciasFiltered.filter((farmacia) => {
+          if (selectedPostalCodes.includes(NO_DATA_OPTION) && !farmacia.codigoPostal) {
+            return true;
+          }
+          return farmacia.codigoPostal && selectedPostalCodes.includes(farmacia.codigoPostal);
+        });
+      }
+
+      if (isFilterToday && createdDaysAgo != null) {
+        farmaciasFiltered = farmaciasFiltered.filter((farmacia) => {
+          return getDatesDiff(getToday(), farmacia.createdAt) < createdDaysAgo;
+        });
+      } else {
+        // Apply visit history filter
+        farmaciasFiltered = farmaciasFiltered.filter((farmacia) =>
+          passesVisitHistoryFilter(
+            'farmacia',
+            farmacia.id,
+            visitHistoryFilter,
+            selectedDate,
+            visits
+          )
+        );
+      }
+
+      farmaciasFiltered
+        .filter((famaciaItem) => {
+          if (!cleanSearchQuery) {
+            return true;
+          }
+
+          return famaciaItem.nombreCuenta?.toLocaleLowerCase().includes(cleanSearchQuery);
+        })
+        .forEach((farmacia) => {
+          entities.push({ type: 'farmacia', data: farmacia });
+        });
     }
 
     // Add filtered doctors
     if (showMedicos) {
-      const medicosToAdd =
-        selectedBricks.length === 0
-          ? doctors
-          : doctors.filter((medico) => {
-              if (selectedBricks.includes(NO_BRICK) && !medico.nombreBrick) {
-                return true;
-              }
-              return medico.nombreBrick && selectedBricks.includes(medico.nombreBrick);
-            });
+      let medicosFiltered = [...doctors];
 
-      // Apply visit history filter
-      const medicosWithVisitFilter = medicosToAdd.filter((medico) =>
-        passesVisitHistoryFilter('medico', medico.id)
-      );
+      if (selectedBricks.length > 0) {
+        medicosFiltered = medicosFiltered.filter((medico) => {
+          if (selectedBricks.includes(NO_DATA_OPTION) && !medico.nombreBrick) {
+            return true;
+          }
+          return medico.nombreBrick && selectedBricks.includes(medico.nombreBrick);
+        });
+      }
 
-      medicosWithVisitFilter.forEach((medico) => {
-        entities.push({ type: 'medico', data: medico });
-      });
+      if (selectedPostalCodes.length > 0) {
+        medicosFiltered = medicosFiltered.filter((medico) => {
+          if (selectedPostalCodes.includes(NO_DATA_OPTION) && !medico.codigoPostal) {
+            return true;
+          }
+
+          return medico.codigoPostal && selectedPostalCodes.includes(medico.codigoPostal);
+        });
+      }
+
+      if (isFilterToday && createdDaysAgo != null) {
+        medicosFiltered = medicosFiltered.filter((farmacia) => {
+          return getDatesDiff(getToday(), farmacia.createdAt) < createdDaysAgo;
+        });
+      } else {
+        // Apply visit history filter
+        medicosFiltered = medicosFiltered.filter((medico) =>
+          passesVisitHistoryFilter('medico', medico.id, visitHistoryFilter, selectedDate, visits)
+        );
+      }
+
+      medicosFiltered
+        .filter((medicoItem) => {
+          if (!cleanSearchQuery) {
+            return true;
+          }
+
+          return (
+            medicoItem.nombreCuenta?.toLocaleLowerCase().includes(cleanSearchQuery) ||
+            medicoItem.especialidad?.toLocaleLowerCase().includes(cleanSearchQuery)
+          );
+        })
+        .forEach((medico) => {
+          entities.push({ type: 'medico', data: medico });
+        });
     }
 
     return entities;
-  }, [pharmacies, doctors, selectedBricks, showFarmacias, showMedicos, visitHistoryFilter, visits, selectedDate]);
+  }, [
+    pharmacies,
+    doctors,
+    selectedBricks,
+    showFarmacias,
+    showMedicos,
+    visitHistoryFilter,
+    visits,
+    selectedDate,
+    createdDaysAgo,
+    isFilterToday,
+    searchQuery,
+    selectedPostalCodes,
+  ]);
 
   // Notify parent whenever filtered entities change
   useEffect(() => {
@@ -245,13 +394,38 @@ export function MapFilters({ pharmacies, doctors, visits, selectedDate, onFilter
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
         <Button
           variant={filterVisibility.brickFilter ? 'contained' : 'outlined'}
-          onClick={() => setFilterVisibility(prev => ({ ...prev, brickFilter: !prev.brickFilter }))}
+          onClick={() =>
+            setFilterVisibility((prev) => ({ ...prev, brickFilter: !prev.brickFilter }))
+          }
         >
           Bricks
         </Button>
         <Button
+          variant={filterVisibility.postalCodeTypeFilter ? 'contained' : 'outlined'}
+          onClick={() =>
+            setFilterVisibility((prev) => ({
+              ...prev,
+              postalCodeTypeFilter: !prev.postalCodeTypeFilter,
+            }))
+          }
+        >
+          Codigo Postal
+        </Button>
+        {isFilterToday && (
+          <Button
+            variant={filterVisibility.recentlyCreated ? 'contained' : 'outlined'}
+            onClick={() =>
+              setFilterVisibility((prev) => ({ ...prev, recentlyCreated: !prev.recentlyCreated }))
+            }
+          >
+            Recientes
+          </Button>
+        )}
+        <Button
           variant={filterVisibility.entityTypeFilter ? 'contained' : 'outlined'}
-          onClick={() => setFilterVisibility(prev => ({ ...prev, entityTypeFilter: !prev.entityTypeFilter }))}
+          onClick={() =>
+            setFilterVisibility((prev) => ({ ...prev, entityTypeFilter: !prev.entityTypeFilter }))
+          }
         >
           Entidades
         </Button>
@@ -272,9 +446,55 @@ export function MapFilters({ pharmacies, doctors, visits, selectedDate, onFilter
         </Button>
       </Box>
 
-      {/* Brick Filter */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2,
+          mb: 2,
+        }}
+      >
+        <TextField
+          label="Buscar"
+          placeholder="Nombre, especialidad, calle, colonia..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value ?? '')}
+          size="small"
+          sx={{ flex: 1, minWidth: { xs: '100%', sm: 200 } }}
+        />
+      </Box>
       <Collapse in={filterVisibility.brickFilter}>
-        <BrickFilter bricks={availableBricks} value={selectedBricks} onChange={setSelectedBricks} />
+        <OptionsFilter
+          itemNames={availableBricks}
+          value={selectedBricks}
+          onChange={setSelectedBricks}
+        />
+      </Collapse>
+      {/* Brick Filter */}
+      <Collapse in={filterVisibility.postalCodeTypeFilter}>
+        <OptionsFilter
+          itemNames={availablePostalCode}
+          value={selectedPostalCodes}
+          onChange={setSelectedPostalCodes}
+        />
+      </Collapse>
+
+      <Collapse in={filterVisibility.recentlyCreated}>
+        <TextField
+          label="Creados hace días"
+          type="number"
+          onChange={(e) => {
+            const newDaysAgo = parseFloat(e.target.value);
+            setCreatedDaysAgo(newDaysAgo >= 0 ? newDaysAgo : -1);
+          }}
+          value={createdDaysAgo ?? -1}
+          fullWidth
+          size="small"
+        />
+        <Box>
+          {createdDaysAgo == null ? 'Mostrando todos' : null}
+          {createdDaysAgo != null && createdDaysAgo === 0 ? 'Mostrando los de hoy' : null}
+        </Box>
       </Collapse>
 
       {/* Visibility Toggles */}
@@ -319,7 +539,8 @@ export function MapFilters({ pharmacies, doctors, visits, selectedDate, onFilter
       <Stack spacing={1} alignItems="center">
         <Typography variant="body2" color="text.secondary">
           Mostrando ({filteredEntities.filter((e) => e.type === 'farmacia').length}/
-          {pharmacies.length}) farmacias ({filteredEntities.filter((e) => e.type === 'medico').length}/{doctors.length}) médicos
+          {pharmacies.length}) farmacias (
+          {filteredEntities.filter((e) => e.type === 'medico').length}/{doctors.length}) médicos
         </Typography>
         <Typography variant="caption" color="text.secondary">
           📅 Fecha de referencia: {selectedDate}
@@ -331,7 +552,8 @@ export function MapFilters({ pharmacies, doctors, visits, selectedDate, onFilter
               `🔍 Filtro: No visitadas desde hace ${visitHistoryFilter.daysSince} días`}
             {visitHistoryFilter.type === 'visited-within-days' &&
               `🔍 Filtro: Visitadas en los últimos ${visitHistoryFilter.daysSince} días`}
-            {visitHistoryFilter.type === 'only-not-found' && '🔍 Filtro: Solo marcadas como "No encontrado"'}
+            {visitHistoryFilter.type === 'only-not-found' &&
+              '🔍 Filtro: Solo marcadas como "No encontrado"'}
             {visitHistoryFilter.type === 'planning-focused' &&
               `🔍 Filtro: Sin visita planificada en los siguientes ${visitHistoryFilter.daysAhead} días, ni actividad reciente (${visitHistoryFilter.daysBack}d)`}
           </Typography>

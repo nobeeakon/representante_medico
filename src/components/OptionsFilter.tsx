@@ -10,15 +10,17 @@ import {
 } from '@mui/material';
 
 // Special constant for entries without a brick
-export const NO_BRICK = '(Sin Brick)';
+export const NO_DATA_OPTION = '(Sin Datos)';
 
-type BrickFilterProps = {
-  bricks: string[];
+export function OptionsFilter({
+  itemNames,
+  value,
+  onChange,
+}: {
+  itemNames: string[];
   value: string[];
   onChange: (selected: string[]) => void;
-};
-
-export function BrickFilter({ bricks, value, onChange }: BrickFilterProps) {
+}) {
   const handleBrickToggle = (brick: string): void => {
     if (value.includes(brick)) {
       onChange(value.filter((b) => b !== brick));
@@ -28,10 +30,10 @@ export function BrickFilter({ bricks, value, onChange }: BrickFilterProps) {
   };
 
   const handleSelectAll = (): void => {
-    if (value.length === bricks.length) {
+    if (value.length === itemNames.length) {
       onChange([]);
     } else {
-      onChange([...bricks]);
+      onChange([...itemNames]);
     }
   };
 
@@ -39,7 +41,7 @@ export function BrickFilter({ bricks, value, onChange }: BrickFilterProps) {
     onChange([]);
   };
 
-  if (bricks.length === 0) {
+  if (itemNames.length === 0) {
     return null;
   }
 
@@ -52,7 +54,7 @@ export function BrickFilter({ bricks, value, onChange }: BrickFilterProps) {
           </Typography>
           <Stack direction="row" spacing={1}>
             <Button size="small" variant="outlined" onClick={handleSelectAll}>
-              {value.length === bricks.length ? 'Deseleccionar Todo' : 'Seleccionar Todo'}
+              {value.length === itemNames.length ? 'Deseleccionar Todo' : 'Seleccionar Todo'}
             </Button>
             {value.length > 0 && (
               <Button size="small" variant="outlined" color="error" onClick={handleClear}>
@@ -78,17 +80,16 @@ export function BrickFilter({ bricks, value, onChange }: BrickFilterProps) {
                 gap: 0.5,
               }}
             >
-              {bricks.map((brick) => {
-                const isNoBrick = brick === NO_BRICK;
-                const isSelected = value.includes(brick);
+              {itemNames.map((itemName) => {
+                const isSelected = value.includes(itemName);
                 return (
                   <FormControlLabel
-                    key={brick}
+                    key={itemName}
                     sx={{ m: 0, px: 0.3, height: 'fit-content', border: '1px solid lightgrey' }}
                     control={
                       <Checkbox
                         checked={isSelected}
-                        onChange={() => handleBrickToggle(brick)}
+                        onChange={() => handleBrickToggle(itemName)}
                         size="small"
                       />
                     }
@@ -96,11 +97,11 @@ export function BrickFilter({ bricks, value, onChange }: BrickFilterProps) {
                       <Typography
                         variant="body2"
                         sx={{
-                          fontStyle: isNoBrick ? 'italic' : 'normal',
-                          color: isNoBrick ? 'text.secondary' : 'text.primary',
+                          fontStyle: 'normal',
+                          color: 'text.primary',
                         }}
                       >
-                        {brick}
+                        {itemName}
                       </Typography>
                     }
                   />
@@ -112,8 +113,8 @@ export function BrickFilter({ bricks, value, onChange }: BrickFilterProps) {
 
         <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
           {value.length > 0
-            ? `${value.length} de ${bricks.length} brick${value.length !== 1 ? 's' : ''} seleccionado${value.length !== 1 ? 's' : ''}`
-            : `${bricks.length} brick${bricks.length !== 1 ? 's' : ''} disponible${bricks.length !== 1 ? 's' : ''} - selecciona para filtrar`}
+            ? `${value.length} de ${itemNames.length}  seleccionado${value.length !== 1 ? 's' : ''}`
+            : `${itemNames.length}  disponible${itemNames.length !== 1 ? 's' : ''} - selecciona para filtrar`}
         </Typography>
       </Stack>
     </Paper>

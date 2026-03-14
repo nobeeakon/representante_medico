@@ -13,6 +13,7 @@ import type { Medico } from '../__types__/doctor';
 import type { Visita, VisitaStatus } from '../__types__/visita';
 import type { Producto } from '../__types__/producto';
 import { nonNullable } from '../utils';
+import type { Doctor } from '../__types__';
 
 type QueryInterface<T> = {
   data: T[];
@@ -33,6 +34,147 @@ type MapDashboardProps = {
   doctorsQuery: QueryInterface<Medico>;
   visitsQuery: VisitsQuery;
   productosQuery: QueryInterface<Producto>;
+};
+
+const getFormData = (
+  itemInfo: { data: Farmacia; type: 'farmacia' } | { data: Medico; type: 'medico' }
+): FormData => {
+  switch (itemInfo.type) {
+    case 'farmacia':
+      return {
+        entityType: 'farmacia' as const,
+        nombreCuenta: itemInfo.data.nombreCuenta ?? '',
+        email: itemInfo.data.email ?? '',
+        phone: itemInfo.data.phone ?? '',
+        estado: itemInfo.data.estado ?? '',
+        municipio: itemInfo.data.municipio ?? '',
+        colonia: itemInfo.data.colonia ?? '',
+        calle: itemInfo.data.calle ?? '',
+        codigoPostal: itemInfo.data.codigoPostal ?? '',
+        especialidad: itemInfo.data.especialidad ?? '',
+        estatus: itemInfo.data.estatus ?? '',
+        lat: itemInfo.data.lat,
+        lng: itemInfo.data.lng,
+        googleMapsUrl: itemInfo.data.googleMapsUrl ?? '',
+        territorio: itemInfo.data.territorio ?? '',
+        pais: itemInfo.data.pais ?? '',
+        ruta: itemInfo.data.ruta ?? '',
+        plantillaClientes: itemInfo.data.plantillaClientes ?? '',
+        folioTienda: itemInfo.data.folioTienda ?? '',
+        cedulaProfesional: itemInfo.data.cedulaProfesional ?? '',
+        grupoCadena: itemInfo.data.grupoCadena ?? '',
+        categoriaMedico: itemInfo.data.categoriaMedico ?? '',
+        propietarioCuenta: itemInfo.data.propietarioCuenta ?? '',
+        ciudad: '',
+      };
+    case 'medico':
+      return {
+        entityType: 'medico' as const,
+        nombreCuenta: itemInfo.data.nombreCuenta ?? '',
+        email: itemInfo.data.email ?? '',
+        phone: itemInfo.data.phone ?? '',
+        estado: itemInfo.data.estado ?? '',
+        municipio: '',
+        colonia: itemInfo.data.colonia ?? '',
+        calle: itemInfo.data.calle ?? '',
+        codigoPostal: itemInfo.data.codigoPostal ?? '',
+        especialidad: itemInfo.data.especialidad ?? '',
+        estatus: itemInfo.data.estatus ?? '',
+        lat: itemInfo.data.lat,
+        lng: itemInfo.data.lng,
+        googleMapsUrl: itemInfo.data.googleMapsUrl ?? '',
+        territorio: '',
+        pais: '',
+        ruta: '',
+        plantillaClientes: '',
+        folioTienda: '',
+        cedulaProfesional: '',
+        grupoCadena: '',
+        categoriaMedico: '',
+        propietarioCuenta: '',
+        ciudad: itemInfo.data.ciudad ?? '',
+      };
+    default: {
+      throw new Error('unhandled item type', itemInfo);
+    }
+  }
+};
+
+const getSavedEntities = ({
+  selectedDate,
+  visits,
+  doctors,
+  pharmacies,
+}: {
+  selectedDate: string;
+  visits: Visita[];
+  doctors: Doctor[];
+  pharmacies: Farmacia[];
+}) => {
+  // Filter visits for the selected date (comparing dates at day level in local timezone)
+  // Parse date string as local time, not UTC
+  const [year, month, day] = selectedDate.split('-').map(Number);
+  const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+  const nextDay = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
+
+  const visitsTargetDate = visits.filter((visitItem) => {
+    return visitItem.fechaVisita >= selectedDateObj && visitItem.fechaVisita < nextDay;
+  });
+
+  const visitsMap: {
+    medico: Map<string, Array<{ visitId: string; visitDate: Date; status: VisitaStatus }>>;
+    farmacia: Map<string, Array<{ visitId: string; visitDate: Date; status: VisitaStatus }>>;
+  } = { medico: new Map(), farmacia: new Map() };
+
+  visitsTargetDate.forEach((visitItem) => {
+    const visitData = {
+      visitId: visitItem.id,
+      visitDate: visitItem.fechaVisita,
+      status: visitItem.estatus,
+    };
+
+    if (visitItem.entidadObjetivoTipo === 'farmacia') {
+      const currentVisits = visitsMap.farmacia.get(visitItem.entidadObjetivoId) ?? [];
+      visitsMap.farmacia.set(visitItem.entidadObjetivoId, [...currentVisits, visitData]);
+    } else if (visitItem.entidadObjetivoTipo === 'medico') {
+      const currentVisits = visitsMap.medico.get(visitItem.entidadObjetivoId) ?? [];
+      visitsMap.medico.set(visitItem.entidadObjetivoId, [...currentVisits, visitData]);
+    }
+  });
+
+  const doctorsVisits = doctors
+    .map((doctorItem) => {
+      const visitData = visitsMap.medico.get(doctorItem.id);
+      if (!visitData) {
+        return null;
+      }
+
+      return visitData.map((visitItem) => ({
+        type: 'medico' as const,
+        data: doctorItem,
+        ...visitItem,
+      }));
+    })
+    .filter(nonNullable)
+    .flat();
+
+  const pharmaciesVisits = pharmacies
+    .map((pharmacyItem) => {
+      const visitData = visitsMap.farmacia.get(pharmacyItem.id);
+      if (!visitData || visitData.length === 0) {
+        return null;
+      }
+
+      return visitData.map((visitItem) => ({
+        type: 'farmacia' as const,
+        data: pharmacyItem,
+        ...visitItem,
+      }));
+    })
+    .filter(nonNullable)
+    .flat();
+
+  return [...doctorsVisits, ...pharmaciesVisits];
 };
 
 export function MapDashboard({
@@ -83,7 +225,6 @@ export function MapDashboard({
         )
       );
     } else {
-      // If any are not selected, select all that aren't already selected
       const newEntities: Array<
         { type: 'farmacia'; data: Farmacia } | { type: 'medico'; data: Medico }
       > = [];
@@ -115,70 +256,7 @@ export function MapDashboard({
   };
 
   const savedEntities = useMemo(() => {
-    // Filter visits for the selected date (comparing dates at day level in local timezone)
-    // Parse date string as local time, not UTC
-    const [year, month, day] = selectedDate.split('-').map(Number);
-    const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
-    const nextDay = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
-
-    const visitsTargetDate = visits.filter((visitItem) => {
-      return visitItem.fechaVisita >= selectedDateObj && visitItem.fechaVisita < nextDay;
-    });
-
-    const visitsMap: {
-      medico: Map<string, Array<{ visitId: string; visitDate: Date; status: VisitaStatus }>>;
-      farmacia: Map<string, Array<{ visitId: string; visitDate: Date; status: VisitaStatus }>>;
-    } = { medico: new Map(), farmacia: new Map() };
-
-    visitsTargetDate.forEach((visitItem) => {
-      const visitData = {
-        visitId: visitItem.id,
-        visitDate: visitItem.fechaVisita,
-        status: visitItem.estatus,
-      };
-
-      if (visitItem.entidadObjetivoTipo === 'farmacia') {
-        const currentVisits = visitsMap.farmacia.get(visitItem.entidadObjetivoId) ?? [];
-        visitsMap.farmacia.set(visitItem.entidadObjetivoId, [...currentVisits, visitData]);
-      } else if (visitItem.entidadObjetivoTipo === 'medico') {
-        const currentVisits = visitsMap.medico.get(visitItem.entidadObjetivoId) ?? [];
-        visitsMap.medico.set(visitItem.entidadObjetivoId, [...currentVisits, visitData]);
-      }
-    });
-
-    const doctorsVisits = doctors
-      .map((doctorItem) => {
-        const visitData = visitsMap.medico.get(doctorItem.id);
-        if (!visitData) {
-          return null;
-        }
-
-        return visitData.map((visitItem) => ({
-          type: 'medico' as const,
-          data: doctorItem,
-          ...visitItem,
-        }));
-      })
-      .filter(nonNullable)
-      .flat();
-
-    const pharmaciesVisits = pharmacies
-      .map((pharmacyItem) => {
-        const visitData = visitsMap.farmacia.get(pharmacyItem.id);
-        if (!visitData || visitData.length === 0) {
-          return null;
-        }
-
-        return visitData.map((visitItem) => ({
-          type: 'farmacia' as const,
-          data: pharmacyItem,
-          ...visitItem,
-        }));
-      })
-      .filter(nonNullable)
-      .flat();
-
-    return [...doctorsVisits, ...pharmaciesVisits];
+    return getSavedEntities({ selectedDate, visits, pharmacies, doctors });
   }, [selectedDate, visits, pharmacies, doctors]);
 
   const handleFilteredEntitiesChange = useCallback(
@@ -210,8 +288,10 @@ export function MapDashboard({
       if (!isUpdate) {
         if (newItemInfo.type === 'medico') {
           await doctorsQuery.add(newItemInfo.data);
+          await doctorsQuery.reload();
         } else if (newItemInfo.type === 'farmacia') {
           await pharmaciesQuery.add(newItemInfo.data);
+          await pharmaciesQuery.reload();
         }
         console.log(`Successfully saved new entity`);
       } else {
@@ -259,32 +339,7 @@ export function MapDashboard({
       );
 
       if (targetItem) {
-        return {
-          entityType: 'farmacia' as const,
-          nombreCuenta: targetItem.nombreCuenta ?? '',
-          email: targetItem.email ?? '',
-          phone: targetItem.phone ?? '',
-          estado: targetItem.estado ?? '',
-          municipio: targetItem.municipio ?? '',
-          colonia: targetItem.colonia ?? '',
-          calle: targetItem.calle ?? '',
-          codigoPostal: targetItem.codigoPostal ?? '',
-          especialidad: targetItem.especialidad ?? '',
-          estatus: targetItem.estatus ?? '',
-          lat: targetItem.lat,
-          lng: targetItem.lng,
-          googleMapsUrl: targetItem.googleMapsUrl ?? '',
-          territorio: targetItem.territorio ?? '',
-          pais: targetItem.pais ?? '',
-          ruta: targetItem.ruta ?? '',
-          plantillaClientes: targetItem.plantillaClientes ?? '',
-          folioTienda: targetItem.folioTienda ?? '',
-          cedulaProfesional: targetItem.cedulaProfesional ?? '',
-          grupoCadena: targetItem.grupoCadena ?? '',
-          categoriaMedico: targetItem.categoriaMedico ?? '',
-          propietarioCuenta: targetItem.propietarioCuenta ?? '',
-          ciudad: '',
-        };
+        getFormData({ type: 'farmacia', data: targetItem });
       }
     } else if (showCreateEntityDialog.type === 'medico') {
       const targetItem = doctors.find(
@@ -292,32 +347,7 @@ export function MapDashboard({
       );
 
       if (targetItem) {
-        return {
-          entityType: 'medico' as const,
-          nombreCuenta: targetItem.nombreCuenta ?? '',
-          email: targetItem.email ?? '',
-          phone: targetItem.phone ?? '',
-          estado: targetItem.estado ?? '',
-          municipio: '',
-          colonia: targetItem.colonia ?? '',
-          calle: targetItem.calle ?? '',
-          codigoPostal: targetItem.codigoPostal ?? '',
-          especialidad: targetItem.especialidad ?? '',
-          estatus: targetItem.estatus ?? '',
-          lat: targetItem.lat,
-          lng: targetItem.lng,
-          googleMapsUrl: targetItem.googleMapsUrl ?? '',
-          territorio: '',
-          pais: '',
-          ruta: '',
-          plantillaClientes: '',
-          folioTienda: '',
-          cedulaProfesional: '',
-          grupoCadena: '',
-          categoriaMedico: '',
-          propietarioCuenta: '',
-          ciudad: targetItem.ciudad ?? '',
-        };
+        getFormData({ type: 'medico', data: targetItem });
       }
     }
   }, [showCreateEntityDialog, pharmacies, doctors]);

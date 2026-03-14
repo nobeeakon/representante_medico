@@ -40,9 +40,12 @@ export class FarmaciasTable extends BaseTable<Farmacia> {
    * Convert spreadsheet row to Farmacia object
    */
   protected rowToObject(row: string[]): Farmacia {
+
+    const createdAtDate = row[1]?new Date(row[1]):new Date();
+
     return {
       id: row[0] || '',
-      createdAt: row[1] || '',
+      createdAt: createdAtDate,
       email: row[2] || undefined,
       phone: row[3] || undefined,
       territorio: row[4] || undefined,
@@ -75,7 +78,7 @@ export class FarmaciasTable extends BaseTable<Farmacia> {
   protected objectToRow(farmacia: Farmacia): (string | number)[] {
     return [
       farmacia.id,
-      farmacia.createdAt,
+      farmacia.createdAt.toISOString(),
       farmacia.email || '',
       farmacia.phone || '',
       farmacia.territorio || '',

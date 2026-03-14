@@ -71,6 +71,7 @@ export class VisitasTable extends BaseTable<Visita> {
   protected rowToObject(row: string[]): Visita {
     const estatus = row[5] || ''
     const entidadObjetivoTipo = row[3] || ''
+    const createdAtDate = row[1]?new Date(row[1]):new Date();
 
     // Parse fechaVisita from ISO string to Date
     const fechaVisitaString = row[2] || row[9] || ''; // Default to fechaVisitaPlaneada if empty
@@ -78,7 +79,7 @@ export class VisitasTable extends BaseTable<Visita> {
 
     return {
       id: row[0] || '',
-      createdAt: row[1] || '',
+      createdAt: createdAtDate,
       fechaVisita,
       entidadObjetivoTipo: this.validateTargetEntityType(entidadObjetivoTipo)?entidadObjetivoTipo:'medico',
       entidadObjetivoId: row[4] || '',
@@ -101,7 +102,7 @@ export class VisitasTable extends BaseTable<Visita> {
 
     return [
       visita.id,
-      visita.createdAt,
+      visita.createdAt.toISOString(),
       fechaVisitaString,
       visita.entidadObjetivoTipo,
       visita.entidadObjetivoId,

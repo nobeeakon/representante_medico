@@ -9,7 +9,7 @@ export type Medico = {
   id: string;
 
   /** Creation timestamp (ISO 8601 date string) */
-  createdAt: string;
+  createdAt: Date;
 
   /** Email address */
   email?: string;

@@ -4,7 +4,7 @@ import { ensureAuthenticated, extractErrorMessage, generateId } from '../utils';
  * Base class for Google Sheets table operations
  * Provides common CRUD operations that can be extended by specific table implementations
  */
-export abstract class BaseTable<T extends { id: string; createdAt: string }> {
+export abstract class BaseTable<T extends { id: string; createdAt: Date }> {
   protected abstract readonly tableName: string;
   protected abstract readonly headers: string[];
 
@@ -92,7 +92,7 @@ export abstract class BaseTable<T extends { id: string; createdAt: string }> {
       // Generate ID and timestamp
       const newRecord = {
         id: generateId(),
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
         ...data,
       } as T;
 
@@ -130,7 +130,7 @@ export abstract class BaseTable<T extends { id: string; createdAt: string }> {
       // Generate IDs and timestamps for all records
       const newRecords = dataArray.map((data) => ({
         id: generateId(),
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
         ...data,
       } as T));
 

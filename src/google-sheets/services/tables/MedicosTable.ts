@@ -31,9 +31,11 @@ export class MedicosTable extends BaseTable<Medico> {
    * Convert spreadsheet row to Medico object
    */
   protected rowToObject(row: string[]): Medico {
+    const createdAtDate = row[1]?new Date(row[1]):new Date();
+    
     return {
       id: row[0] || '',
-      createdAt: row[1] || '',
+      createdAt: createdAtDate,
       email: row[2] || undefined,
       phone: row[3] || undefined,
       estado: row[4] || undefined,
@@ -57,7 +59,7 @@ export class MedicosTable extends BaseTable<Medico> {
   protected objectToRow(medico: Medico): (string | number)[] {
     return [
       medico.id,
-      medico.createdAt,
+      medico.createdAt.toISOString(),
       medico.email || '',
       medico.phone || '',
       medico.estado || '',

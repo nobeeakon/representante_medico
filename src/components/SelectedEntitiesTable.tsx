@@ -382,7 +382,7 @@ export function SelectedEntitiesTable({
     const plannedDateTime = `${selectedDate}T09:00:00`; // Default to 9:00 AM
     const draft: Visita = {
       id: 'draft-' + Date.now(), // Temporary ID
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
       fechaVisita: new Date(plannedDateTime),
       fechaVisitaPlaneada: plannedDateTime,
       entidadObjetivoTipo: entity.type,
@@ -573,7 +573,7 @@ export function SelectedEntitiesTable({
       >
         <TextField
           label="Buscar"
-          placeholder="Nombre, especialidad, calle, colonia..."
+          placeholder="Nombre, especialidad"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           size="small"
