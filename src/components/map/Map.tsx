@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import type { Icon, DivIcon } from 'leaflet';
-import { FilterList, FilterAlt, Fullscreen } from '@mui/icons-material';
+import { useMemo, useState, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
+import type { Icon, DivIcon, PathOptions } from 'leaflet';
+import { FilterList, FilterAlt, Fullscreen, Crop } from '@mui/icons-material';
 import type { Farmacia } from '../../__types__/pharmacy';
 import type { Medico } from '../../__types__/doctor';
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
+import { point, polygon as turfPolygon } from '@turf/helpers';
 import 'leaflet/dist/leaflet.css';
 import './Map.css';
 import {
@@ -15,6 +17,7 @@ import {
   createCombinedIcon,
   createGroupedIcon,
 } from './icons';
+import {POLYGON_GEO_JSON} from './polygons';
 
 type SelectedEntity = {
   type: 'farmacia' | 'medico';
@@ -120,7 +123,23 @@ export function MapView({
   onToggleSelection,
 }: MapProps) {
   const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [filterByPolygon, setFilterByPolygon] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+
+  // Check if a point is inside any of the polygons
+  const isPointInPolygon = useCallback((lat: number, lng: number): boolean => {
+    const pt = point([lng, lat]); // Turf uses [lng, lat] format
+
+    for (const feature of POLYGON_GEO_JSON.features) {
+      if (feature.geometry.type === 'Polygon') {
+        const poly = turfPolygon(feature.geometry.coordinates);
+        if (booleanPointInPolygon(pt, poly)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, []);
 
   // Prepare marker data with icons based on location composition and selection state
   const markers = useMemo(() => {
@@ -185,11 +204,33 @@ export function MapView({
     });
   }, [entities, selectedEntities, highlightedEntity, savedEntities]);
 
-  // Filter markers if "show only selected" is enabled
+  // Filter markers based on selection and polygon filters
   const filteredMarkers = useMemo(() => {
-    if (!showOnlySelected) return markers;
-    return markers.filter((marker) => marker.isSelected);
-  }, [markers, showOnlySelected]);
+    let filtered = markers;
+
+    // Filter by selection
+    if (showOnlySelected) {
+      filtered = filtered.filter((marker) => marker.isSelected);
+    }
+
+    // Filter by polygon
+    if (filterByPolygon) {
+      filtered = filtered.filter((marker) =>
+        isPointInPolygon(marker.location.lat, marker.location.lng)
+      );
+    }
+
+    return filtered;
+  }, [markers, showOnlySelected, filterByPolygon, isPointInPolygon]);
+
+  // Style for GeoJSON polygons
+  const polygonStyle: PathOptions = {
+    color: '#2563eb',
+    weight: 3 * 1.5, // Increase stroke weight by 50%
+    opacity: 1,
+    fillColor: '#3b82f6',
+    fillOpacity: 0.2,
+  };
 
   // Render the map content (used in both normal and full screen views)
   const renderMapContent = () => (
@@ -207,6 +248,9 @@ export function MapView({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+
+      {/* Render GeoJSON polygons and lines */}
+      <GeoJSON data={POLYGON_GEO_JSON} style={polygonStyle} />
 
       {/* Render markers with prepared data */}
       {filteredMarkers.map((marker, index) => {
@@ -422,13 +466,39 @@ export function MapView({
           {showOnlySelected ? <FilterAlt /> : <FilterList />}
         </button>
 
+        {/* Polygon Filter Button - Circular Bottom Left */}
+        <button
+          onClick={() => setFilterByPolygon(!filterByPolygon)}
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '80px',
+            zIndex: 1000,
+            width: '48px',
+            height: '48px',
+            padding: '0',
+            cursor: 'pointer',
+            backgroundColor: filterByPolygon ? '#f59e0b' : 'white',
+            color: filterByPolygon ? 'white' : '#374151',
+            border: filterByPolygon ? 'none' : '2px solid #e5e7eb',
+            borderRadius: '50%',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title={filterByPolygon ? 'Mostrar todos' : 'Filtrar por polígonos'}
+        >
+          <Crop />
+        </button>
+
         {/* Full Screen Toggle Button - Circular Bottom Left */}
         <button
           onClick={() => setIsFullScreen(true)}
           style={{
             position: 'absolute',
             bottom: '20px',
-            left: '80px',
+            left: '140px',
             zIndex: 1000,
             width: '48px',
             height: '48px',
@@ -524,6 +594,32 @@ export function MapView({
             title={showOnlySelected ? 'Mostrar todos' : 'Filtrar seleccionados'}
           >
             {showOnlySelected ? <FilterAlt /> : <FilterList />}
+          </button>
+
+          {/* Polygon Filter Button in Full Screen - Circular Bottom Left */}
+          <button
+            onClick={() => setFilterByPolygon(!filterByPolygon)}
+            style={{
+              position: 'absolute',
+              bottom: '20px',
+              left: '80px',
+              zIndex: 10000,
+              width: '48px',
+              height: '48px',
+              padding: '0',
+              cursor: 'pointer',
+              backgroundColor: filterByPolygon ? '#f59e0b' : 'white',
+              color: filterByPolygon ? 'white' : '#374151',
+              border: filterByPolygon ? 'none' : '2px solid #e5e7eb',
+              borderRadius: '50%',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title={filterByPolygon ? 'Mostrar todos' : 'Filtrar por polígonos'}
+          >
+            <Crop />
           </button>
 
           <div style={{ width: '100%', height: '100%' }}>
