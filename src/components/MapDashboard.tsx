@@ -338,17 +338,15 @@ export function MapDashboard({
         (pharmacyItem) => pharmacyItem.id === showCreateEntityDialog.id
       );
 
-      if (targetItem) {
-        getFormData({ type: 'farmacia', data: targetItem });
-      }
-    } else if (showCreateEntityDialog.type === 'medico') {
+      return !targetItem ? undefined : getFormData({ type: 'farmacia', data: targetItem });
+    }
+
+    if (showCreateEntityDialog.type === 'medico') {
       const targetItem = doctors.find(
         (pharmacyItem) => pharmacyItem.id === showCreateEntityDialog.id
       );
 
-      if (targetItem) {
-        getFormData({ type: 'medico', data: targetItem });
-      }
+      return !targetItem ? undefined : getFormData({ type: 'medico', data: targetItem });
     }
   }, [showCreateEntityDialog, pharmacies, doctors]);
 
