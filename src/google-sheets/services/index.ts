@@ -32,7 +32,7 @@ export async function initializeSheet(): Promise<string> {
   return currentSheetId;
 }
 
-export type TableOperations<T extends { id: string; createdAt: string }> = {
+export type TableOperations<T extends { id: string; createdAt: Date }> = {
   read: () => Promise<T[]>;
   write: (data: Omit<T, 'id' | 'createdAt'>) => Promise<T>;
   batchWrite: (dataArray: Array<Omit<T, 'id' | 'createdAt'>>) => Promise<T[]>;
@@ -40,7 +40,7 @@ export type TableOperations<T extends { id: string; createdAt: string }> = {
   delete: (index: number) => Promise<void>;
 };
 
-function createTableOperations<T extends { id: string; createdAt: string }>(
+function createTableOperations<T extends { id: string; createdAt: Date }>(
   table: BaseTable<T>
 ): TableOperations<T> {
   return {

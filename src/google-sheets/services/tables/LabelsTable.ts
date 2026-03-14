@@ -14,9 +14,10 @@ export class LabelsTable extends BaseTable<Label> {
    * Convert spreadsheet row to Label object
    */
   protected rowToObject(row: string[]): Label {
+    const createdAtDate = row[1]?new Date(row[1]):new Date();
     return {
       id: row[0] || '',
-      createdAt: row[1] || '',
+      createdAt: createdAtDate,
       labelType: row[2] || undefined,
       nombre: row[3] || undefined,
     };
@@ -26,6 +27,6 @@ export class LabelsTable extends BaseTable<Label> {
    * Convert Label object to spreadsheet row
    */
   protected objectToRow(label: Label): (string | number)[] {
-    return [label.id, label.createdAt, label.labelType || '', label.nombre || ''];
+    return [label.id, label.createdAt.toISOString(), label.labelType || '', label.nombre || ''];
   }
 }

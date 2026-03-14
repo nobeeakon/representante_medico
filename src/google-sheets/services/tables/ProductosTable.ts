@@ -16,9 +16,11 @@ export class ProductosTable extends BaseTable<Producto> {
    * Convert spreadsheet row to Producto object
    */
   protected rowToObject(row: string[]): Producto {
+    const createdAtDate = row[1]?new Date(row[1]):new Date();
+
     return {
       id: row[0] || '',
-      createdAt: row[1] || '',
+      createdAt: createdAtDate,
       nombre: row[2] || '',
       presentacion: row[3] || '',
     };
@@ -28,6 +30,6 @@ export class ProductosTable extends BaseTable<Producto> {
    * Convert Producto object to spreadsheet row
    */
   protected objectToRow(producto: Producto): (string | number)[] {
-    return [producto.id, producto.createdAt, producto.nombre, producto.presentacion];
+    return [producto.id, producto.createdAt.toISOString(), producto.nombre, producto.presentacion];
   }
 }

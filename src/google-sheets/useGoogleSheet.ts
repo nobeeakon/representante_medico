@@ -3,7 +3,7 @@ import { farmacias, medicos, visitas, labels, productos, initializeSheet } from 
 import { isAuthenticated, initializeGoogleApi } from './authService';
 import type { TableOperations } from './services/index';
 
-type BasicDataType = { id: string; createdAt: string };
+type BasicDataType = { id: string; createdAt: Date };
 type DataState<DataType extends BasicDataType> = {
   status: 'idle' | 'loading' | 'success' | 'error';
   data: DataType[];

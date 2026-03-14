@@ -1,7 +1,7 @@
 import { ensureAuthenticated, extractErrorMessage } from './utils';
 import type { BaseTable } from './tables/BaseTable';
 
-type TableInstance = BaseTable<{ id: string; createdAt: string }>;
+type TableInstance = BaseTable<{ id: string; createdAt: Date }>;
 
 // Lock to prevent concurrent initialization
 let initializationPromise: Promise<string> | null = null;

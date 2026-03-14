@@ -1,6 +1,6 @@
 export type Label = {
   id: string;
-  createdAt: string;
+  createdAt: Date;
   labelType?: string;
   nombre?: string;
 };

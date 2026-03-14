@@ -1,6 +1,6 @@
 export type Producto = {
   id: string;
-  createdAt: string;
+  createdAt: Date;
   nombre: string;
   presentacion: string;
 };
