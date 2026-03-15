@@ -404,7 +404,7 @@ export function MapDashboard({
         />
 
         {/* Map */}
-        <Box paddingX={6}>
+        <Box paddingX={6} pb={10}>
           <MapView
             entities={mapFilteredEntities}
             savedEntities={savedEntities}
