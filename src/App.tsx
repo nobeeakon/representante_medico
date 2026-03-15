@@ -1,7 +1,12 @@
 import { Box, Stack, Typography, CircularProgress } from '@mui/material';
 import { ErrorState } from './components/ErrorState';
 import { MapDashboard } from './components/MapDashboard';
-import { usePharmaciesQuery, useDoctorsQuery, useVisitsQuery, useProductosQuery } from './google-sheets/useGoogleSheet';
+import {
+  usePharmaciesQuery,
+  useDoctorsQuery,
+  useVisitsQuery,
+  useProductosQuery,
+} from './google-sheets/useGoogleSheet';
 
 function App() {
   const pharmacies = usePharmaciesQuery();

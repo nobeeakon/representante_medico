@@ -86,7 +86,9 @@ const hookFactory = <DataType extends BasicDataType>(dataOperations: TableOperat
       }
     };
 
-    const batchAdd = async (newItems: Array<Omit<DataType, 'id' | 'createdAt'>>): Promise<DataType[]> => {
+    const batchAdd = async (
+      newItems: Array<Omit<DataType, 'id' | 'createdAt'>>
+    ): Promise<DataType[]> => {
       try {
         const newRecords = await dataOperations.batchWrite(newItems);
 

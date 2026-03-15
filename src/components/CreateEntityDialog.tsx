@@ -18,10 +18,9 @@ import { Add as AddIcon, MyLocation as MyLocationIcon } from '@mui/icons-materia
 import type { Farmacia } from '../__types__/pharmacy';
 import type { Medico } from '../__types__/doctor';
 
-
 type EntityType = 'medico' | 'farmacia';
 
-export type FormData = {
+export type UpdateEntityFormData = {
   entityType: EntityType;
   // Common fields - all required as strings for form handling
   nombreCuenta: string;
@@ -37,6 +36,7 @@ export type FormData = {
   lat?: number;
   lng?: number;
   googleMapsUrl: string;
+  direccionDetallesAdicionales: string;
   // Farmacia-specific fields
   territorio: string;
   pais: string;
@@ -55,10 +55,8 @@ type DialogState = {
   loading: boolean;
   error: string | null;
   loadingLocation: boolean;
-  data: FormData;
+  data: UpdateEntityFormData;
 };
-
-
 
 const getInitialState = (): DialogState => ({
   loading: false,
@@ -79,6 +77,7 @@ const getInitialState = (): DialogState => ({
     lat: undefined,
     lng: undefined,
     googleMapsUrl: '',
+    direccionDetallesAdicionales: '',
     territorio: '',
     pais: 'México',
     ruta: '',
@@ -94,26 +93,28 @@ const getInitialState = (): DialogState => ({
 
 type CreateEntityDialogProps = {
   onClose: () => void;
-  onSave: (newItemInfo: {type: 'medico', data: Omit<Medico, 'id' | 'createdAt'> }|{type: 'farmacia', data: Omit<Farmacia, 'id' | 'createdAt'> } ) => Promise<void>;
-  entity?: FormData;
+  onSave: (
+    newItemInfo:
+      | { type: 'medico'; data: Omit<Medico, 'id' | 'createdAt'> }
+      | { type: 'farmacia'; data: Omit<Farmacia, 'id' | 'createdAt'> }
+  ) => Promise<void>;
+  entity?: UpdateEntityFormData;
 };
 
-
-export function CreateEntityDialog({
-  onClose,
-  onSave,
-  entity
-}: CreateEntityDialogProps) {
-  const [state, setState] = useState<DialogState>(() => !entity?getInitialState():{...getInitialState(), data: {...entity}});
+export function CreateEntityDialog({ onClose, onSave, entity }: CreateEntityDialogProps) {
+  const [state, setState] = useState<DialogState>(() =>
+    !entity ? getInitialState() : { ...getInitialState(), data: { ...entity } }
+  );
 
   // Helper to update coordinates and Google Maps URL together
   const updateCoordinates = (lat?: number, lng?: number) => {
     setState((prev) => {
       const newLat = lat ?? prev.data.lat;
       const newLng = lng ?? prev.data.lng;
-      const googleMapsUrl = newLat !== undefined && newLng !== undefined
-        ? `https://www.google.com/maps/search/?api=1&query=${newLat},${newLng}`
-        : '';
+      const googleMapsUrl =
+        newLat !== undefined && newLng !== undefined
+          ? `https://www.google.com/maps/search/?api=1&query=${newLat},${newLng}`
+          : '';
 
       return {
         ...prev,
@@ -211,8 +212,9 @@ export function CreateEntityDialog({
           lat: state.data.lat,
           lng: state.data.lng,
           googleMapsUrl: state.data.googleMapsUrl.trim() || undefined,
+          direccionDetallesAdicionales: state.data.direccionDetallesAdicionales.trim() || undefined,
         };
-        await onSave({type: 'medico', data: newDoctor});
+        await onSave({ type: 'medico', data: newDoctor });
       } else {
         const newPharmacy: Omit<Farmacia, 'id' | 'createdAt'> = {
           nombreCuenta: state.data.nombreCuenta.trim() || undefined,
@@ -238,8 +240,7 @@ export function CreateEntityDialog({
           lng: state.data.lng,
           googleMapsUrl: state.data.googleMapsUrl.trim() || undefined,
         };
-        await onSave({type: 'farmacia', data: newPharmacy});
-
+        await onSave({ type: 'farmacia', data: newPharmacy });
       }
 
       // Close dialog on success
@@ -255,11 +256,7 @@ export function CreateEntityDialog({
   };
 
   return (
-    <Dialog
-      open={true}
-      onClose={onClose}
-      fullScreen
-    >
+    <Dialog open={true} onClose={onClose} fullScreen>
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AddIcon />
@@ -409,7 +406,9 @@ export function CreateEntityDialog({
               />
               <Button
                 variant="outlined"
-                startIcon={state.loadingLocation ? <CircularProgress size={16} /> : <MyLocationIcon />}
+                startIcon={
+                  state.loadingLocation ? <CircularProgress size={16} /> : <MyLocationIcon />
+                }
                 onClick={handleGetCurrentLocation}
                 disabled={state.loadingLocation}
                 sx={{ minWidth: 'max-content', whiteSpace: 'nowrap' }}
@@ -514,6 +513,18 @@ export function CreateEntityDialog({
                 setState((prev) => ({
                   ...prev,
                   data: { ...prev.data, codigoPostal: e.target.value },
+                }))
+              }
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="Detalles adicionales"
+              value={state.data.direccionDetallesAdicionales}
+              onChange={(e) =>
+                setState((prev) => ({
+                  ...prev,
+                  data: { ...prev.data, direccionDetallesAdicionales: e.target.value },
                 }))
               }
               fullWidth
@@ -637,7 +648,9 @@ export function CreateEntityDialog({
           disabled={state.loading || !!validationError}
           startIcon={state.loading ? <CircularProgress size={16} /> : <AddIcon />}
         >
-          {state.loading ? 'Guardando...' : `Guardar ${state.data.entityType === 'medico' ? 'Médico' : 'Farmacia'}`}
+          {state.loading
+            ? 'Guardando...'
+            : `Guardar ${state.data.entityType === 'medico' ? 'Médico' : 'Farmacia'}`}
         </Button>
       </DialogActions>
     </Dialog>

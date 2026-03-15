@@ -638,8 +638,7 @@ export function SelectedEntitiesTable({
               <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Estatus</TableCell>
               <TableCell>Nombre</TableCell>
               <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Especialidad</TableCell>
-              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Calle</TableCell>
-              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Colonia</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Dirección</TableCell>
               <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Brick</TableCell>
               <TableCell>Acciones</TableCell>
             </TableRow>
@@ -669,13 +668,22 @@ export function SelectedEntitiesTable({
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body2">
-                        <ButtonBase
-                          onClick={() => onEditEntity({ type: item.type, id: item.data.id })}
-                        >
-                          {item.data.nombreCuenta || 'Sin nombre'}
-                        </ButtonBase>
-                      </Typography>
+                      <Box>
+                        <Typography variant="body2">
+                          <ButtonBase
+                            onClick={() => onEditEntity({ type: item.type, id: item.data.id })}
+                          >
+                            {item.data.nombreCuenta || 'Sin nombre'}
+                          </ButtonBase>
+                        </Typography>
+                        <Typography variant="caption" sx={{ display: { md: 'none' } }}>
+                          {item.data.calle || ''},{' '}
+                          {!item.data.colonia ? '-' : `Colonia: ${item.data.colonia}`}.{' '}
+                          {!('direccionDetallesAdicionales' in item.data)
+                            ? ''
+                            : (item.data?.direccionDetallesAdicionales ?? '')}
+                        </Typography>
+                      </Box>
                       <Tooltip title="Ver historial de visitas">
                         <IconButton
                           size="small"
@@ -699,10 +707,11 @@ export function SelectedEntitiesTable({
                     {item.type === 'medico' ? item.data.especialidad || '' : ''}
                   </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                    {item.data.calle || ''}
-                  </TableCell>
-                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                    {item.data.colonia || ''}
+                    {item.data.calle || ''},{' '}
+                    {!item.data.colonia ? '-' : `Colonia: ${item.data.colonia}`}.{' '}
+                    {!('direccionDetallesAdicionales' in item.data)
+                      ? ''
+                      : (item.data?.direccionDetallesAdicionales ?? '')}
                   </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     {item.data.nombreBrick || ''}
@@ -866,7 +875,6 @@ export function SelectedEntitiesTable({
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell></TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}></TableCell>

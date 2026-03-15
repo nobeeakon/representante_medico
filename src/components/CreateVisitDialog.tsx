@@ -70,21 +70,25 @@ export function CreateVisitDialog({
   const filteredEntities = useMemo(() => {
     const searchLower = state.data.searchTerm.toLowerCase();
 
-    let doctorsToInclude = state.data.entityFilter === 'all' || state.data.entityFilter === 'medico' ? doctors : [];
-    let pharmaciesToInclude = state.data.entityFilter === 'all' || state.data.entityFilter === 'farmacia' ? pharmacies : [];
+    let doctorsToInclude =
+      state.data.entityFilter === 'all' || state.data.entityFilter === 'medico' ? doctors : [];
+    let pharmaciesToInclude =
+      state.data.entityFilter === 'all' || state.data.entityFilter === 'farmacia' ? pharmacies : [];
 
     if (state.data.searchTerm) {
-      doctorsToInclude = doctorsToInclude.filter((doctor) =>
-        doctor.nombreCuenta?.toLowerCase().includes(searchLower) ||
-        doctor.especialidad?.toLowerCase().includes(searchLower) ||
-        doctor.calle?.toLowerCase().includes(searchLower) ||
-        doctor.colonia?.toLowerCase().includes(searchLower)
+      doctorsToInclude = doctorsToInclude.filter(
+        (doctor) =>
+          doctor.nombreCuenta?.toLowerCase().includes(searchLower) ||
+          doctor.especialidad?.toLowerCase().includes(searchLower) ||
+          doctor.calle?.toLowerCase().includes(searchLower) ||
+          doctor.colonia?.toLowerCase().includes(searchLower)
       );
 
-      pharmaciesToInclude = pharmaciesToInclude.filter((pharmacy) =>
-        pharmacy.nombreCuenta?.toLowerCase().includes(searchLower) ||
-        pharmacy.calle?.toLowerCase().includes(searchLower) ||
-        pharmacy.colonia?.toLowerCase().includes(searchLower)
+      pharmaciesToInclude = pharmaciesToInclude.filter(
+        (pharmacy) =>
+          pharmacy.nombreCuenta?.toLowerCase().includes(searchLower) ||
+          pharmacy.calle?.toLowerCase().includes(searchLower) ||
+          pharmacy.colonia?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -126,7 +130,10 @@ export function CreateVisitDialog({
       if (pharmacy) {
         setState((prev) => ({
           ...prev,
-          data: { ...prev.data, selectedEntity: { type: 'farmacia', id: entity.id, data: pharmacy } },
+          data: {
+            ...prev.data,
+            selectedEntity: { type: 'farmacia', id: entity.id, data: pharmacy },
+          },
         }));
       }
     }
@@ -184,10 +191,13 @@ export function CreateVisitDialog({
     }
   };
 
-
   // Calculate map center based on filtered entities or selected entity
   const mapCenter = useMemo((): [number, number] => {
-    if (state.data.selectedEntity && state.data.selectedEntity.data.lat && state.data.selectedEntity.data.lng) {
+    if (
+      state.data.selectedEntity &&
+      state.data.selectedEntity.data.lat &&
+      state.data.selectedEntity.data.lng
+    ) {
       return [state.data.selectedEntity.data.lat, state.data.selectedEntity.data.lng];
     }
 
@@ -198,11 +208,7 @@ export function CreateVisitDialog({
   const hasValidEntities = filteredEntities.some((e) => e.data.lat && e.data.lng);
 
   return (
-    <Dialog
-      open={true}
-      onClose={onClose}
-      fullScreen
-    >
+    <Dialog open={true} onClose={onClose} fullScreen>
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AddIcon />
@@ -248,15 +254,33 @@ export function CreateVisitDialog({
 
         {/* Results count */}
         <Typography variant="body2" color="text.secondary">
-          {filteredEntities.length} resultado{filteredEntities.length !== 1 ? 's' : ''} encontrado{filteredEntities.length !== 1 ? 's' : ''}
+          {filteredEntities.length} resultado{filteredEntities.length !== 1 ? 's' : ''} encontrado
+          {filteredEntities.length !== 1 ? 's' : ''}
         </Typography>
 
         {/* Map */}
-        <Box sx={{ flex: 1, minHeight: 400, border: '1px solid #e0e0e0', borderRadius: 1, overflow: 'hidden' }}>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 400,
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            overflow: 'hidden',
+          }}
+        >
           {!hasValidEntities ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100%',
+              }}
+            >
               <Typography variant="body1" color="text.secondary">
-                {state.data.searchTerm ? 'No se encontraron entidades con coordenadas válidas' : 'Ingresa un término de búsqueda'}
+                {state.data.searchTerm
+                  ? 'No se encontraron entidades con coordenadas válidas'
+                  : 'Ingresa un término de búsqueda'}
               </Typography>
             </Box>
           ) : (

@@ -25,14 +25,15 @@ export class MedicosTable extends BaseTable<Medico> {
     'lat',
     'lng',
     'googleMapsUrl',
+    'direccionDetallesAdicionales',
   ];
 
   /**
    * Convert spreadsheet row to Medico object
    */
   protected rowToObject(row: string[]): Medico {
-    const createdAtDate = row[1]?new Date(row[1]):new Date();
-    
+    const createdAtDate = row[1] ? new Date(row[1]) : new Date();
+
     return {
       id: row[0] || '',
       createdAt: createdAtDate,
@@ -50,6 +51,7 @@ export class MedicosTable extends BaseTable<Medico> {
       lat: row[13] ? parseFloat(row[13]) : undefined,
       lng: row[14] ? parseFloat(row[14]) : undefined,
       googleMapsUrl: row[15] || undefined,
+      direccionDetallesAdicionales: row[16] || undefined,
     };
   }
 
@@ -74,6 +76,7 @@ export class MedicosTable extends BaseTable<Medico> {
       medico.lat ?? '',
       medico.lng ?? '',
       medico.googleMapsUrl || '',
+      medico.direccionDetallesAdicionales || '',
     ];
   }
 }

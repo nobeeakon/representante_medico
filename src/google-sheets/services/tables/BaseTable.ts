@@ -120,7 +120,10 @@ export abstract class BaseTable<T extends { id: string; createdAt: Date }> {
   /**
    * Write multiple new records to the table in a single batch operation
    */
-  async batchWrite(spreadsheetId: string, dataArray: Array<Omit<T, 'id' | 'createdAt'>>): Promise<T[]> {
+  async batchWrite(
+    spreadsheetId: string,
+    dataArray: Array<Omit<T, 'id' | 'createdAt'>>
+  ): Promise<T[]> {
     try {
       await ensureAuthenticated();
 
@@ -128,11 +131,14 @@ export abstract class BaseTable<T extends { id: string; createdAt: Date }> {
       await this.validateHeaders(spreadsheetId);
 
       // Generate IDs and timestamps for all records
-      const newRecords = dataArray.map((data) => ({
-        id: generateId(),
-        createdAt: new Date(),
-        ...data,
-      } as T));
+      const newRecords = dataArray.map(
+        (data) =>
+          ({
+            id: generateId(),
+            createdAt: new Date(),
+            ...data,
+          }) as T
+      );
 
       // Convert all records to rows
       const rows = newRecords.map((record) => this.objectToRow(record));
@@ -147,7 +153,9 @@ export abstract class BaseTable<T extends { id: string; createdAt: Date }> {
         },
       });
 
-      console.log(`${this.tableName} batch write: ${newRecords.length} records written successfully`);
+      console.log(
+        `${this.tableName} batch write: ${newRecords.length} records written successfully`
+      );
 
       return newRecords;
     } catch (error) {
@@ -214,9 +222,7 @@ export abstract class BaseTable<T extends { id: string; createdAt: Date }> {
         spreadsheetId,
       });
 
-      const sheet = response.result.sheets?.find(
-        (s) => s.properties?.title === this.tableName
-      );
+      const sheet = response.result.sheets?.find((s) => s.properties?.title === this.tableName);
 
       if (!sheet?.properties?.sheetId) {
         throw new Error(`Sheet "${this.tableName}" not found in spreadsheet`);

@@ -3,10 +3,8 @@ type ProductoInformation = {
   cantidad: string;
 };
 
-
 export type VisitaStatus = 'planeado' | 'visitado' | 'noEncontrado';
 export type VisitaEntidadObjetivo = 'medico' | 'farmacia';
-
 
 export type Visita = {
   id: string;

@@ -22,7 +22,10 @@ import type { Visita } from '../__types__/visita';
 import type { Farmacia } from '../__types__/pharmacy';
 import type { Medico } from '../__types__/doctor';
 
-const STATUS_DISPLAY: Record<string, { text: string; color: 'default' | 'primary' | 'success' | 'error' | 'warning' | 'info' }> = {
+const STATUS_DISPLAY: Record<
+  string,
+  { text: string; color: 'default' | 'primary' | 'success' | 'error' | 'warning' | 'info' }
+> = {
   planeado: { text: 'Planeado', color: 'primary' },
   visitado: { text: 'Visitado', color: 'success' },
   noEncontrado: { text: 'No Encontrado', color: 'error' },
@@ -43,8 +46,7 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
     return visits
       .filter(
         (visit) =>
-          visit.entidadObjetivoTipo === entity.type &&
-          visit.entidadObjetivoId === entity.data.id
+          visit.entidadObjetivoTipo === entity.type && visit.entidadObjetivoId === entity.data.id
       )
       .sort((a, b) => {
         // Sort by visit date, most recent first
@@ -94,10 +96,9 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
         </Box>
       </DialogTitle>
       <DialogContent dividers>
-           {/* Summary Section */}
+        {/* Summary Section */}
         {entityVisits.length > 0 && (
-          <Box sx={{  p: 3, bgcolor: 'background.paper', borderRadius: 1 }}>
-    
+          <Box sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 1 }}>
             <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               <Box>
                 <Typography variant="body2" color="text.secondary">
@@ -139,7 +140,6 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
             </Typography>
           </Box>
         ) : (
-          
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
@@ -164,11 +164,7 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
                       <TableCell>{formatDate(visit.fechaVisita)}</TableCell>
                       <TableCell>{formatTime(visit.fechaVisita)}</TableCell>
                       <TableCell>
-                        <Chip
-                          label={statusInfo.text}
-                          color={statusInfo.color}
-                          size="small"
-                        />
+                        <Chip label={statusInfo.text} color={statusInfo.color} size="small" />
                       </TableCell>
                       <TableCell>
                         <Typography
@@ -202,8 +198,6 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
             </Table>
           </TableContainer>
         )}
-
-     
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} variant="contained">

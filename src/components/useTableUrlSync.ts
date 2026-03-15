@@ -3,10 +3,7 @@ import { useEffect } from 'react';
 /**
  * Syncs selected date with URL query parameter
  */
-export function useDateUrlSync(
-  selectedDate: string,
-  setSelectedDate: (date: string) => void
-) {
+export function useDateUrlSync(selectedDate: string, setSelectedDate: (date: string) => void) {
   // Read date from URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -62,7 +59,7 @@ export function useStatusFilterUrlSync(
 
       // Validate statuses are valid (planeado, visitado, noEncontrado)
       const validStatuses = ['planeado', 'visitado', 'noEncontrado'];
-      const filteredStatuses = statuses.filter(s => validStatuses.includes(s));
+      const filteredStatuses = statuses.filter((s) => validStatuses.includes(s));
 
       if (filteredStatuses.length > 0) {
         setSelectedStatuses(filteredStatuses);

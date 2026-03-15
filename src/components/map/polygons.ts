@@ -1,13 +1,13 @@
 import type { FeatureCollection, Polygon } from 'geojson';
 
 export const POLYGON_GEO_JSON: FeatureCollection<Polygon> = {
-  "type": "FeatureCollection",
-  "features": [
+  type: 'FeatureCollection',
+  features: [
     {
-      "type": "Feature",
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
           [
             [-100.361372, 20.578785],
             [-100.359762, 20.580848],
@@ -126,18 +126,18 @@ export const POLYGON_GEO_JSON: FeatureCollection<Polygon> = {
             [-100.356432, 20.563737],
             [-100.356675, 20.565877],
             [-100.358913, 20.570567],
-            [-100.361372, 20.578785]
-          ]
-        ]
+            [-100.361372, 20.578785],
+          ],
+        ],
       },
-      "properties": {}
+      properties: {},
     },
     {
-      "type": "Feature",
-      "properties": {},
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
           [
             [-100.336198, 20.575667],
             [-100.33519, 20.567316],
@@ -151,10 +151,10 @@ export const POLYGON_GEO_JSON: FeatureCollection<Polygon> = {
             [-100.322701, 20.584381],
             [-100.329372, 20.582856],
             [-100.33201, 20.575812],
-            [-100.336198, 20.575667]
-          ]
-        ]
-      }
-    }
-  ]
-}
+            [-100.336198, 20.575667],
+          ],
+        ],
+      },
+    },
+  ],
+};

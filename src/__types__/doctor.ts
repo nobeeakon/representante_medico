@@ -29,6 +29,9 @@ export type Medico = {
   /** Calle */
   calle?: string;
 
+  /** Direccion detalles adicionales */
+  direccionDetallesAdicionales?: string;
+
   /** Estatus (e.g., "Activa") */
   estatus?: string;
 

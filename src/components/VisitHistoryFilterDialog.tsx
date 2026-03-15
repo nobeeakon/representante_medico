@@ -13,7 +13,13 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 
-export type VisitHistoryFilterType = 'none' | 'never-visited' | 'not-visited-since' | 'visited-within-days' | 'only-not-found' | 'planning-focused';
+export type VisitHistoryFilterType =
+  | 'none'
+  | 'never-visited'
+  | 'not-visited-since'
+  | 'visited-within-days'
+  | 'only-not-found'
+  | 'planning-focused';
 
 export type VisitHistoryFilterConfig = {
   type: VisitHistoryFilterType;
@@ -43,7 +49,10 @@ export function VisitHistoryFilterDialog({
   const handleApply = () => {
     onApply({
       type: filterType,
-      daysSince: (filterType === 'not-visited-since' || filterType === 'visited-within-days') ? daysSince : undefined,
+      daysSince:
+        filterType === 'not-visited-since' || filterType === 'visited-within-days'
+          ? daysSince
+          : undefined,
       daysAhead: filterType === 'planning-focused' ? daysAhead : undefined,
       daysBack: filterType === 'planning-focused' ? daysBack : undefined,
     });
@@ -64,17 +73,12 @@ export function VisitHistoryFilterDialog({
             Selecciona un filtro para mostrar solo las entidades que cumplan con el criterio:
           </Typography>
 
-          <RadioGroup value={filterType} onChange={(e) => setFilterType(e.target.value as VisitHistoryFilterType)}>
-            <FormControlLabel
-              value="none"
-              control={<Radio />}
-              label="Sin filtro (mostrar todas)"
-            />
-            <FormControlLabel
-              value="never-visited"
-              control={<Radio />}
-              label="Nunca visitadas"
-            />
+          <RadioGroup
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value as VisitHistoryFilterType)}
+          >
+            <FormControlLabel value="none" control={<Radio />} label="Sin filtro (mostrar todas)" />
+            <FormControlLabel value="never-visited" control={<Radio />} label="Nunca visitadas" />
             <FormControlLabel
               value="not-visited-since"
               control={<Radio />}

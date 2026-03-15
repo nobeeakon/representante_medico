@@ -16,7 +16,7 @@ export class ProductosTable extends BaseTable<Producto> {
    * Convert spreadsheet row to Producto object
    */
   protected rowToObject(row: string[]): Producto {
-    const createdAtDate = row[1]?new Date(row[1]):new Date();
+    const createdAtDate = row[1] ? new Date(row[1]) : new Date();
 
     return {
       id: row[0] || '',

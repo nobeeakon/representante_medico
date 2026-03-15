@@ -40,8 +40,7 @@ export class FarmaciasTable extends BaseTable<Farmacia> {
    * Convert spreadsheet row to Farmacia object
    */
   protected rowToObject(row: string[]): Farmacia {
-
-    const createdAtDate = row[1]?new Date(row[1]):new Date();
+    const createdAtDate = row[1] ? new Date(row[1]) : new Date();
 
     return {
       id: row[0] || '',

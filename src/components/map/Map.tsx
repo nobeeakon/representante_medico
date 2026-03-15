@@ -17,7 +17,7 @@ import {
   createCombinedIcon,
   createGroupedIcon,
 } from './icons';
-import {POLYGON_GEO_JSON} from './polygons';
+import { POLYGON_GEO_JSON } from './polygons';
 
 type SelectedEntity = {
   type: 'farmacia' | 'medico';
@@ -66,7 +66,7 @@ function groupByLocation(
   const locationMap = new Map<string, CombinedLocation>();
 
   // Create a set of saved entity IDs for quick lookup
-  const savedEntityIds = new Set(savedEntities.map(e => e.data.id));
+  const savedEntityIds = new Set(savedEntities.map((e) => e.data.id));
 
   entities.forEach((entity) => {
     const lat = entity.data.lat;
@@ -153,11 +153,15 @@ export function MapView({
       const hasMultipleMedicos = location.medicos.length > 1;
 
       // Check if any entity at this location is selected or saved (both show as selected/yellow)
-      const hasSelectedFarmacia = location.farmacias.some((f) =>
-        selectedEntities.some((e) => e.type === 'farmacia' && e.id === f.id) || location.savedEntityIds.has(f.id)
+      const hasSelectedFarmacia = location.farmacias.some(
+        (f) =>
+          selectedEntities.some((e) => e.type === 'farmacia' && e.id === f.id) ||
+          location.savedEntityIds.has(f.id)
       );
-      const hasSelectedMedico = location.medicos.some((m) =>
-        selectedEntities.some((e) => e.type === 'medico' && e.id === m.id) || location.savedEntityIds.has(m.id)
+      const hasSelectedMedico = location.medicos.some(
+        (m) =>
+          selectedEntities.some((e) => e.type === 'medico' && e.id === m.id) ||
+          location.savedEntityIds.has(m.id)
       );
       const isSelected = hasSelectedFarmacia || hasSelectedMedico;
 
@@ -261,13 +265,22 @@ export function MapView({
             <Popup maxWidth={300}>
               <div className="popup-container">
                 {/* Select All Button */}
-                {(location.farmacias.length + location.medicos.length > 1) && (
-                  <div style={{ marginBottom: '12px', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>
+                {location.farmacias.length + location.medicos.length > 1 && (
+                  <div
+                    style={{
+                      marginBottom: '12px',
+                      borderBottom: '1px solid #e5e7eb',
+                      paddingBottom: '8px',
+                    }}
+                  >
                     <button
                       onClick={() => {
                         const allEntities: SelectedEntity[] = [
-                          ...location.farmacias.map(f => ({ type: 'farmacia' as const, id: f.id })),
-                          ...location.medicos.map(m => ({ type: 'medico' as const, id: m.id }))
+                          ...location.farmacias.map((f) => ({
+                            type: 'farmacia' as const,
+                            id: f.id,
+                          })),
+                          ...location.medicos.map((m) => ({ type: 'medico' as const, id: m.id })),
                         ];
                         onToggleSelection?.(allEntities);
                       }}
@@ -308,14 +321,23 @@ export function MapView({
                             ? `(${farmaciaIndex + 1}/${location.farmacias.length})`
                             : ''}
                           {isFarmaciaSaved && (
-                            <span style={{ marginLeft: '8px', fontSize: '12px', color: '#059669', fontWeight: 'bold' }}>
+                            <span
+                              style={{
+                                marginLeft: '8px',
+                                fontSize: '12px',
+                                color: '#059669',
+                                fontWeight: 'bold',
+                              }}
+                            >
                               ✓ Guardada
                             </span>
                           )}
                         </h3>
                         {!isFarmaciaSaved && (
                           <button
-                            onClick={() => onToggleSelection?.([{ type: 'farmacia', id: farmacia.id }])}
+                            onClick={() =>
+                              onToggleSelection?.([{ type: 'farmacia', id: farmacia.id }])
+                            }
                             style={{
                               padding: '4px 8px',
                               fontSize: '12px',
@@ -366,10 +388,7 @@ export function MapView({
                   );
                   const isMedicoSaved = location.savedEntityIds.has(medico.id);
                   return (
-                    <div
-                      key={`medico-${medicoIndex}`}
-                      className={isLastItem ? '' : 'popup-item'}
-                    >
+                    <div key={`medico-${medicoIndex}`} className={isLastItem ? '' : 'popup-item'}>
                       <div className="popup-title">
                         <h3>
                           Médico{' '}
@@ -377,7 +396,14 @@ export function MapView({
                             ? `(${medicoIndex + 1}/${location.medicos.length})`
                             : ''}
                           {isMedicoSaved && (
-                            <span style={{ marginLeft: '8px', fontSize: '12px', color: '#2563eb', fontWeight: 'bold' }}>
+                            <span
+                              style={{
+                                marginLeft: '8px',
+                                fontSize: '12px',
+                                color: '#2563eb',
+                                fontWeight: 'bold',
+                              }}
+                            >
                               ✓ Guardado
                             </span>
                           )}
@@ -385,7 +411,9 @@ export function MapView({
                         {!isMedicoSaved && (
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <button
-                              onClick={() => onToggleSelection?.([{ type: 'medico', id: medico.id }])}
+                              onClick={() =>
+                                onToggleSelection?.([{ type: 'medico', id: medico.id }])
+                              }
                               style={{
                                 padding: '4px 8px',
                                 fontSize: '12px',
@@ -442,7 +470,9 @@ export function MapView({
         {/* Filter Button - Circular Bottom Left */}
         <button
           onClick={() => setShowOnlySelected(!showOnlySelected)}
-          disabled={!showOnlySelected && selectedEntities.length === 0 && savedEntities.length === 0}
+          disabled={
+            !showOnlySelected && selectedEntities.length === 0 && savedEntities.length === 0
+          }
           style={{
             position: 'absolute',
             bottom: '20px',
@@ -572,7 +602,9 @@ export function MapView({
           {/* Filter Button in Full Screen - Circular Bottom Left */}
           <button
             onClick={() => setShowOnlySelected(!showOnlySelected)}
-            disabled={!showOnlySelected && selectedEntities.length === 0 && savedEntities.length === 0}
+            disabled={
+              !showOnlySelected && selectedEntities.length === 0 && savedEntities.length === 0
+            }
             style={{
               position: 'absolute',
               bottom: '20px',
@@ -622,9 +654,7 @@ export function MapView({
             <Crop />
           </button>
 
-          <div style={{ width: '100%', height: '100%' }}>
-            {renderMapContent()}
-          </div>
+          <div style={{ width: '100%', height: '100%' }}>{renderMapContent()}</div>
         </dialog>
       )}
     </>

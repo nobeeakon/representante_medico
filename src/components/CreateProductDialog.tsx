@@ -40,10 +40,7 @@ const getInitialState = (): DialogState => ({
   },
 });
 
-export function CreateProductDialog({
-  onClose,
-  onSaveProduct,
-}: CreateProductDialogProps) {
+export function CreateProductDialog({ onClose, onSaveProduct }: CreateProductDialogProps) {
   const [state, setState] = useState<DialogState>(getInitialState);
 
   // Validation
@@ -93,11 +90,7 @@ export function CreateProductDialog({
   };
 
   return (
-    <Dialog
-      open={true}
-      onClose={onClose}
-      fullScreen
-    >
+    <Dialog open={true} onClose={onClose} fullScreen>
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AddIcon />

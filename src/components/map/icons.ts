@@ -66,8 +66,6 @@ export const highlightedIcon = divIcon({
   popupAnchor: [0, -25],
 });
 
-
-
 /**
  * Creates a square icon for locations with both farmacias and medicos
  * Uses a split color design: green (left) for farmacias, blue (right) for medicos

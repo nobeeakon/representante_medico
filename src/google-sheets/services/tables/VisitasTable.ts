@@ -1,4 +1,4 @@
-import type { Visita, VisitaStatus , VisitaEntidadObjetivo} from '../../../__types__/visita';
+import type { Visita, VisitaStatus, VisitaEntidadObjetivo } from '../../../__types__/visita';
 import { BaseTable } from './BaseTable';
 
 type Columns = keyof Visita;
@@ -45,7 +45,7 @@ export class VisitasTable extends BaseTable<Visita> {
     }
   }
 
-    /**
+  /**
    * Validates estatus value with exhaustive check
    */
   private validateTargetEntityType(value: string): value is VisitaEntidadObjetivo {
@@ -64,14 +64,13 @@ export class VisitasTable extends BaseTable<Visita> {
     }
   }
 
-
   /**
    * Convert spreadsheet row to Visita object
    */
   protected rowToObject(row: string[]): Visita {
-    const estatus = row[5] || ''
-    const entidadObjetivoTipo = row[3] || ''
-    const createdAtDate = row[1]?new Date(row[1]):new Date();
+    const estatus = row[5] || '';
+    const entidadObjetivoTipo = row[3] || '';
+    const createdAtDate = row[1] ? new Date(row[1]) : new Date();
 
     // Parse fechaVisita from ISO string to Date
     const fechaVisitaString = row[2] || row[9] || ''; // Default to fechaVisitaPlaneada if empty
@@ -81,9 +80,11 @@ export class VisitasTable extends BaseTable<Visita> {
       id: row[0] || '',
       createdAt: createdAtDate,
       fechaVisita,
-      entidadObjetivoTipo: this.validateTargetEntityType(entidadObjetivoTipo)?entidadObjetivoTipo:'medico',
+      entidadObjetivoTipo: this.validateTargetEntityType(entidadObjetivoTipo)
+        ? entidadObjetivoTipo
+        : 'medico',
       entidadObjetivoId: row[4] || '',
-      estatus: this.validateEstatus(estatus)?estatus:'planeado' as const,
+      estatus: this.validateEstatus(estatus) ? estatus : ('planeado' as const),
       etiquetasIds: row[6] ? JSON.parse(row[6]) : undefined,
       nota: row[7] || undefined,
       productoJson: row[8] ? JSON.parse(row[8]) : [],

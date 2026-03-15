@@ -220,10 +220,7 @@ export function ManageProductsDialog({
           />
 
           {state.error && (
-            <Alert
-              severity="error"
-              onClose={() => setState((prev) => ({ ...prev, error: null }))}
-            >
+            <Alert severity="error" onClose={() => setState((prev) => ({ ...prev, error: null }))}>
               {state.error}
             </Alert>
           )}
@@ -256,14 +253,8 @@ export function ManageProductsDialog({
     return (
       <Box sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5">
-            Productos ({productos.length})
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleStartAdd}
-          >
+          <Typography variant="h5">Productos ({productos.length})</Typography>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleStartAdd}>
             Agregar Producto
           </Button>
         </Box>
@@ -292,11 +283,7 @@ export function ManageProductsDialog({
             <Typography variant="body2" sx={{ mb: 3 }}>
               Agrega tu primer producto para comenzar
             </Typography>
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={handleStartAdd}
-            >
+            <Button variant="outlined" startIcon={<AddIcon />} onClick={handleStartAdd}>
               Agregar Producto
             </Button>
           </Box>
@@ -321,9 +308,7 @@ export function ManageProductsDialog({
                       {product.nombre}
                     </TableCell>
                     <TableCell>{product.presentacion}</TableCell>
-                    <TableCell>
-                      {new Date(product.createdAt).toLocaleDateString()}
-                    </TableCell>
+                    <TableCell>{new Date(product.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell align="right">
                       <IconButton
                         size="small"
@@ -356,19 +341,10 @@ export function ManageProductsDialog({
   };
 
   return (
-    <Dialog
-      fullScreen
-      open={open}
-      onClose={onClose}
-    >
+    <Dialog fullScreen open={open} onClose={onClose}>
       <AppBar sx={{ position: 'relative' }}>
         <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            onClick={onClose}
-            aria-label="close"
-          >
+          <IconButton edge="start" color="inherit" onClick={onClose} aria-label="close">
             <CloseIcon />
           </IconButton>
           <Typography sx={{ ml: 2, flex: 1 }} variant="h6" component="div">

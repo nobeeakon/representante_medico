@@ -4,7 +4,7 @@ import { Add as AddIcon } from '@mui/icons-material';
 import { MapView } from './map/Map';
 import { SelectedEntitiesTable } from './SelectedEntitiesTable';
 import { GoogleAuth } from '../google-sheets/GoogleAuth';
-import { CreateEntityDialog, type FormData } from './CreateEntityDialog';
+import { CreateEntityDialog, type UpdateEntityFormData } from './CreateEntityDialog';
 import { ManageProductsDialog } from './ManageProductsDialog';
 import { MapFilters } from './MapFilters';
 import { useDateUrlSync } from './useTableUrlSync';
@@ -38,7 +38,7 @@ type MapDashboardProps = {
 
 const getFormData = (
   itemInfo: { data: Farmacia; type: 'farmacia' } | { data: Medico; type: 'medico' }
-): FormData => {
+): UpdateEntityFormData => {
   switch (itemInfo.type) {
     case 'farmacia':
       return {
@@ -66,6 +66,7 @@ const getFormData = (
         categoriaMedico: itemInfo.data.categoriaMedico ?? '',
         propietarioCuenta: itemInfo.data.propietarioCuenta ?? '',
         ciudad: '',
+        direccionDetallesAdicionales: '',
       };
     case 'medico':
       return {
@@ -93,6 +94,7 @@ const getFormData = (
         categoriaMedico: '',
         propietarioCuenta: '',
         ciudad: itemInfo.data.ciudad ?? '',
+        direccionDetallesAdicionales: itemInfo.data.direccionDetallesAdicionales ?? '',
       };
     default: {
       throw new Error('unhandled item type', itemInfo);
@@ -328,7 +330,7 @@ export function MapDashboard({
     setShowCreateEntityDialog({ id: entityInfo.id, type: entityInfo.type });
   };
 
-  const entityToEdit = useMemo<undefined | FormData>(() => {
+  const entityToEdit = useMemo<undefined | UpdateEntityFormData>(() => {
     if (!showCreateEntityDialog || typeof showCreateEntityDialog !== 'object') {
       return undefined;
     }

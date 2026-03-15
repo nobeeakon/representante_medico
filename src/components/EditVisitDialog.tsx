@@ -140,11 +140,7 @@ export function EditVisitDialog({
   };
 
   return (
-    <Dialog
-      open={true}
-      onClose={onClose}
-      fullScreen
-    >
+    <Dialog open={true} onClose={onClose} fullScreen>
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {mode === 'duplicate' ? <ContentCopyIcon /> : <EditIcon />}
@@ -158,8 +154,8 @@ export function EditVisitDialog({
         {/* Entity Info */}
         <Alert severity="info">
           <Typography variant="body2">
-            <strong>Entidad:</strong>{' '}
-            {entityType === 'medico' ? 'Médico' : 'Farmacia'} - {entityName}
+            <strong>Entidad:</strong> {entityType === 'medico' ? 'Médico' : 'Farmacia'} -{' '}
+            {entityName}
           </Typography>
         </Alert>
 
@@ -255,11 +251,7 @@ export function EditVisitDialog({
         />
 
         {/* Validation Error */}
-        {validationError && (
-          <Alert severity="warning">
-            {validationError}
-          </Alert>
-        )}
+        {validationError && <Alert severity="warning">{validationError}</Alert>}
 
         {/* Error Message */}
         {state.error && (
@@ -285,9 +277,21 @@ export function EditVisitDialog({
           variant="contained"
           onClick={handleSave}
           disabled={state.loading || !!validationError}
-          startIcon={state.loading ? <CircularProgress size={16} /> : mode === 'duplicate' ? <ContentCopyIcon /> : <EditIcon />}
+          startIcon={
+            state.loading ? (
+              <CircularProgress size={16} />
+            ) : mode === 'duplicate' ? (
+              <ContentCopyIcon />
+            ) : (
+              <EditIcon />
+            )
+          }
         >
-          {state.loading ? 'Guardando...' : mode === 'duplicate' ? 'Crear Visita' : 'Guardar Cambios'}
+          {state.loading
+            ? 'Guardando...'
+            : mode === 'duplicate'
+              ? 'Crear Visita'
+              : 'Guardar Cambios'}
         </Button>
       </DialogActions>
     </Dialog>
