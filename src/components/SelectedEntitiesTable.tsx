@@ -678,7 +678,8 @@ export function SelectedEntitiesTable({
                         </Typography>
                         <Typography variant="caption" sx={{ display: { md: 'none' } }}>
                           {item.data.calle || ''},{' '}
-                          {!item.data.colonia ? '-' : `Colonia: ${item.data.colonia}`}.{' '}
+                          {!item.data.colonia ? '-' : `Col: ${item.data.colonia}`}.{' '}
+                          {!item.data.codigoPostal ? '-' : `CP: ${item.data.codigoPostal}`}.{' '}
                           {!('direccionDetallesAdicionales' in item.data)
                             ? ''
                             : (item.data?.direccionDetallesAdicionales ?? '')}
@@ -708,7 +709,8 @@ export function SelectedEntitiesTable({
                   </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     {item.data.calle || ''},{' '}
-                    {!item.data.colonia ? '-' : `Colonia: ${item.data.colonia}`}.{' '}
+                    {!item.data.colonia ? '-' : `Col: ${item.data.colonia}`}.{' '}
+                    {!item.data.codigoPostal ? '-' : `CP: ${item.data.codigoPostal}`}.{' '}
                     {!('direccionDetallesAdicionales' in item.data)
                       ? ''
                       : (item.data?.direccionDetallesAdicionales ?? '')}
