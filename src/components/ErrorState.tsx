@@ -26,7 +26,6 @@ export function ErrorState({ errors }: { errors: string[] }) {
             <p key={index}>{error}</p>
           ))}
         </Alert>
-        {isAuthError && (
           <GoogleAuth
             onAuthStateChange={(isAuth) => {
               if (isAuth) {
@@ -34,7 +33,6 @@ export function ErrorState({ errors }: { errors: string[] }) {
               }
             }}
           />
-        )}
         <Button
           variant="contained"
           onClick={() => window.location.reload()}
