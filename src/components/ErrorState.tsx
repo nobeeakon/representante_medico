@@ -1,14 +1,14 @@
-import { useCallback } from 'react';
+// import { useCallback } from 'react';
 import { Box, Stack, Typography, Button, Alert } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 import { GoogleAuth } from '../google-sheets/GoogleAuth';
 
 export function ErrorState({ errors }: { errors: string[] }) {
-  const hanleOnAuthStateChange = useCallback((isAuth: boolean) => {
-    if (isAuth) {
-      window.location.reload();
-    }
-  }, []);
+  // const hanleOnAuthStateChange = useCallback((isAuth: boolean) => {
+  //   if (isAuth) {
+  //     window.location.reload();
+  //   }
+  // }, []);
 
   return (
     <Box
@@ -28,7 +28,7 @@ export function ErrorState({ errors }: { errors: string[] }) {
             <p key={index}>{error}</p>
           ))}
         </Alert>
-        <GoogleAuth onAuthStateChange={hanleOnAuthStateChange} />
+        <GoogleAuth  />
         <Button
           variant="contained"
           onClick={() => window.location.reload()}
