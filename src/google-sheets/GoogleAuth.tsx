@@ -30,7 +30,9 @@ export function GoogleAuth({
           error: null,
         });
 
-        onAuthStateChange?.(authStatus);
+        if (authStatus) {
+          window.location.reload();
+        }
       } catch (err) {
         console.error('Failed to initialize Google API:', err);
         setState({
@@ -41,7 +43,6 @@ export function GoogleAuth({
     };
 
     initialize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSignIn = async () => {

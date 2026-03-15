@@ -3,7 +3,6 @@ import { Refresh as RefreshIcon } from '@mui/icons-material';
 import { GoogleAuth } from '../google-sheets/GoogleAuth';
 
 export function ErrorState({ errors }: { errors: string[] }) {
-
   return (
     <Box
       sx={{
@@ -22,13 +21,7 @@ export function ErrorState({ errors }: { errors: string[] }) {
             <p key={index}>{error}</p>
           ))}
         </Alert>
-          <GoogleAuth
-            onAuthStateChange={(isAuth) => {
-              if (isAuth) {
-                window.location.reload();
-              }
-            }}
-          />
+        <GoogleAuth />
         <Button
           variant="contained"
           onClick={() => window.location.reload()}
