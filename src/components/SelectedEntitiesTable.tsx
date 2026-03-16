@@ -162,9 +162,13 @@ export function SelectedEntitiesTable({
   useStatusFilterUrlSync(selectedStatuses, setSelectedStatuses);
 
   // Sort saved entities by date (earliest first)
-  const sortedSavedEntities = [...savedEntities].sort((a, b) => {
-    return a.visitDate.getTime() - b.visitDate.getTime();
-  });
+  const sortedSavedEntities = useMemo(
+    () =>
+      [...savedEntities].sort((a, b) => {
+        return a.visitDate.getTime() - b.visitDate.getTime();
+      }),
+    [savedEntities]
+  );
 
   // Combine selected and saved entities for display
   const unfilteredEntities = useMemo(() => {

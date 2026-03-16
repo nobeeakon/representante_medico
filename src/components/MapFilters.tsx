@@ -18,6 +18,7 @@ import {
 import type { Farmacia } from '../__types__/pharmacy';
 import type { Medico } from '../__types__/doctor';
 import type { Visita } from '../__types__/visita';
+import { parseDateLocal, getToday } from './utils';
 
 type MapFiltersProps = {
   pharmacies: Farmacia[];
@@ -72,20 +73,6 @@ function getAvailablePostalCodes(entities: Array<{ codigoPostal?: string }>): st
 
   return bricksArray;
 }
-
-// Helper to parse date string in local timezone (not UTC)
-const parseDateLocal = (dateStr: string): Date => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
-};
-
-const getToday = () => {
-  const now = new Date();
-
-  now.setHours(0, 0, 0, 0);
-
-  return now;
-};
 
 const ONE_DAY_MS = 1000 * 60 * 60 * 24;
 const getDatesDiff = (date1: Date, date2: Date) => {

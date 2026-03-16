@@ -14,6 +14,7 @@ import type { Visita, VisitaStatus } from '../__types__/visita';
 import type { Producto } from '../__types__/producto';
 import { nonNullable } from '../utils';
 import type { Doctor } from '../__types__';
+import { parseDateLocal } from './utils';
 
 type QueryInterface<T> = {
   data: T[];
@@ -115,9 +116,9 @@ const getSavedEntities = ({
 }) => {
   // Filter visits for the selected date (comparing dates at day level in local timezone)
   // Parse date string as local time, not UTC
-  const [year, month, day] = selectedDate.split('-').map(Number);
-  const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
-  const nextDay = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
+  const selectedDateObj = parseDateLocal(selectedDate);
+  const nextDay = new Date(selectedDateObj);
+  nextDay.setDate(nextDay.getDate() + 1);
 
   const visitsTargetDate = visits.filter((visitItem) => {
     return visitItem.fechaVisita >= selectedDateObj && visitItem.fechaVisita < nextDay;

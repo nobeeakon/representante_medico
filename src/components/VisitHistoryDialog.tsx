@@ -171,9 +171,6 @@ export function VisitHistoryDialog({ open, entity, visits, onClose }: VisitHisto
                           variant="body2"
                           sx={{
                             maxWidth: 300,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
                           }}
                           title={visit.nota || ''}
                         >

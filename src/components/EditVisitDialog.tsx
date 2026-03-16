@@ -23,6 +23,7 @@ import {
   ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import type { Visita, VisitaStatus } from '../__types__/visita';
+import { stringifyDate } from './utils';
 
 type EditVisitDialogProps = {
   visit: Visita;
@@ -45,16 +46,7 @@ type DialogState = {
 };
 
 const getInitialState = (visit: Visita): DialogState => {
-  // Extract date and time from actual visit date (if exists)
-  let visitDate = '';
-  let visitTime = '';
-  if (visit.fechaVisita) {
-    // fechaVisita is already a Date object
-    visitDate = visit.fechaVisita.toISOString().split('T')[0];
-    const visitHours = visit.fechaVisita.getHours();
-    const visitMinutes = visit.fechaVisita.getMinutes();
-    visitTime = `${String(visitHours).padStart(2, '0')}:${String(visitMinutes).padStart(2, '0')}`;
-  }
+  const { date: visitDate, time: visitTime } = stringifyDate(visit.fechaVisita);
 
   return {
     loading: false,

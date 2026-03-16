@@ -28,7 +28,7 @@ export function ErrorState({ errors }: { errors: string[] }) {
             <p key={index}>{error}</p>
           ))}
         </Alert>
-        <GoogleAuth  />
+        <GoogleAuth />
         <Button
           variant="contained"
           onClick={() => window.location.reload()}
