@@ -9,6 +9,11 @@ import {
   Chip,
   Typography,
   TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  OutlinedInput,
 } from '@mui/material';
 import { OptionsFilter, NO_DATA_OPTION } from './OptionsFilter';
 import {
@@ -16,7 +21,7 @@ import {
   type VisitHistoryFilterConfig,
 } from './VisitHistoryFilterDialog';
 import type { Farmacia } from '../__types__/pharmacy';
-import type { Medico } from '../__types__/doctor';
+import type { Medico, CompradorStatus } from '../__types__/doctor';
 import type { Visita } from '../__types__/visita';
 import { parseDateLocal, getToday } from './utils';
 
@@ -207,6 +212,13 @@ const passesVisitHistoryFilter = (
   return true;
 };
 
+const DOCTOR_BUYER_STATUS_DISPLAY: Record<CompradorStatus, string> = {
+  muyBueno: 'Muy Bueno',
+  bueno: 'Bueno',
+  normal: 'Normal',
+  malo: 'Malo',
+};
+
 export function MapFilters({
   pharmacies,
   doctors,
@@ -216,6 +228,7 @@ export function MapFilters({
 }: MapFiltersProps) {
   const [selectedBricks, setSelectedBricks] = useState<string[]>([]);
   const [selectedPostalCodes, setSelectedPostalCodes] = useState<string[]>([]);
+  const [selectedDoctorBuyerStatus, setSelectedDoctorBuyerStatus] = useState<string[]>([]);
   const [createdDaysAgo, setCreatedDaysAgo] = useState<number | null>(null);
   const [showFarmacias, setShowFarmacias] = useState<boolean>(true);
   const [showMedicos, setShowMedicos] = useState<boolean>(true);
@@ -308,6 +321,14 @@ export function MapFilters({
     if (showMedicos) {
       let medicosFiltered = [...doctors];
 
+      if (selectedDoctorBuyerStatus.length > 0) {
+        medicosFiltered = medicosFiltered.filter((medico) => {
+          return (
+            medico.compradorEstatus && selectedDoctorBuyerStatus.includes(medico.compradorEstatus)
+          );
+        });
+      }
+
       if (selectedBricks.length > 0) {
         medicosFiltered = medicosFiltered.filter((medico) => {
           if (selectedBricks.includes(NO_DATA_OPTION) && !medico.nombreBrick) {
@@ -368,6 +389,7 @@ export function MapFilters({
     isFilterToday,
     searchQuery,
     selectedPostalCodes,
+    selectedDoctorBuyerStatus,
   ]);
 
   // Notify parent whenever filtered entities change
@@ -450,6 +472,35 @@ export function MapFilters({
           sx={{ flex: 1, minWidth: { xs: '100%', sm: 200 } }}
         />
       </Box>
+
+      <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
+        <InputLabel id="buyer-status-filter-label">Comprador</InputLabel>
+        <Select
+          labelId="buyer-status-filter-label"
+          multiple
+          value={selectedDoctorBuyerStatus}
+          onChange={(e) =>
+            setSelectedDoctorBuyerStatus(
+              typeof e.target.value === 'string' ? [e.target.value] : e.target.value
+            )
+          }
+          input={<OutlinedInput label="Filtrar por estatus" />}
+          renderValue={(selected) => (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {selected.map((value) => (
+                <Chip key={value} label={value} size="small" />
+              ))}
+            </Box>
+          )}
+        >
+          {Object.entries(DOCTOR_BUYER_STATUS_DISPLAY).map(([key, displayText]) => (
+            <MenuItem key={key} value={key}>
+              <Chip label={displayText} size="small" />
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
       <Collapse in={filterVisibility.brickFilter}>
         <OptionsFilter
           itemNames={availableBricks}

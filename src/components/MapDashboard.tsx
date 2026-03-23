@@ -68,6 +68,7 @@ const getFormData = (
         propietarioCuenta: itemInfo.data.propietarioCuenta ?? '',
         ciudad: '',
         direccionDetallesAdicionales: '',
+        compradorStatus: undefined,
       };
     case 'medico':
       return {
@@ -96,6 +97,7 @@ const getFormData = (
         propietarioCuenta: '',
         ciudad: itemInfo.data.ciudad ?? '',
         direccionDetallesAdicionales: itemInfo.data.direccionDetallesAdicionales ?? '',
+        compradorStatus: itemInfo.data.compradorEstatus,
       };
     default: {
       throw new Error('unhandled item type', itemInfo);

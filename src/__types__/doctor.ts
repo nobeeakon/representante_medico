@@ -1,3 +1,5 @@
+export type CompradorStatus = 'muyBueno' | 'bueno' | 'normal' | 'malo';
+
 /**
  * Medico (Doctor) type
  *
@@ -34,6 +36,9 @@ export type Medico = {
 
   /** Estatus (e.g., "Activa") */
   estatus?: string;
+
+  /** Estatus (e.g., "Activa") */
+  compradorEstatus?: CompradorStatus;
 
   /** Codigo postal */
   codigoPostal?: string;

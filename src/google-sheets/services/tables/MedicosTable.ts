@@ -1,4 +1,4 @@
-import type { Medico } from '../../../__types__/doctor';
+import type { Medico, CompradorStatus } from '../../../__types__/doctor';
 import { BaseTable } from './BaseTable';
 
 /**
@@ -26,6 +26,7 @@ export class MedicosTable extends BaseTable<Medico> {
     'lng',
     'googleMapsUrl',
     'direccionDetallesAdicionales',
+    'compradorEstatus',
   ];
 
   /**
@@ -33,6 +34,7 @@ export class MedicosTable extends BaseTable<Medico> {
    */
   protected rowToObject(row: string[]): Medico {
     const createdAtDate = row[1] ? new Date(row[1]) : new Date();
+    const compradorEstatus = row[17] ?? '';
 
     return {
       id: row[0] || '',
@@ -52,6 +54,9 @@ export class MedicosTable extends BaseTable<Medico> {
       lng: row[14] ? parseFloat(row[14]) : undefined,
       googleMapsUrl: row[15] || undefined,
       direccionDetallesAdicionales: row[16] || undefined,
+      compradorEstatus: this.stringToCompradorStatus(compradorEstatus)
+        ? compradorEstatus
+        : undefined,
     };
   }
 
@@ -77,6 +82,12 @@ export class MedicosTable extends BaseTable<Medico> {
       medico.lng ?? '',
       medico.googleMapsUrl || '',
       medico.direccionDetallesAdicionales || '',
+      medico.compradorEstatus || '',
     ];
+  }
+
+  private stringToCompradorStatus(input: string): input is CompradorStatus {
+    const statusValid: Array<CompradorStatus> = ['muyBueno', 'bueno', 'normal', 'malo'];
+    return (statusValid as string[]).includes(input);
   }
 }

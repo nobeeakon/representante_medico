@@ -1,13 +1,10 @@
-import { useMemo, useState, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
-import type { Icon, DivIcon, PathOptions } from 'leaflet';
-import { FilterList, FilterAlt, Fullscreen, Crop } from '@mui/icons-material';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import type { Icon, DivIcon } from 'leaflet';
+import { FilterList, FilterAlt, Fullscreen, Crop, PinDrop } from '@mui/icons-material';
 import type { Farmacia } from '../../__types__/pharmacy';
 import type { Medico } from '../../__types__/doctor';
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { point, polygon as turfPolygon } from '@turf/helpers';
-import 'leaflet/dist/leaflet.css';
-import './Map.css';
 import {
   farmaciaIcon,
   farmaciaSelectedIcon,
@@ -18,6 +15,7 @@ import {
   createGroupedIcon,
 } from './icons';
 import { POLYGON_GEO_JSON } from './polygons';
+import { MapContent, type MarkerData, type CombinedLocation } from './MapContent';
 
 type SelectedEntity = {
   type: 'farmacia' | 'medico';
@@ -37,23 +35,6 @@ interface MapProps {
   highlightedEntity?: SelectedEntity | null;
   onToggleSelection?: (entities: SelectedEntity[]) => void;
 }
-
-// Combined location type for markers at the same coordinates
-interface CombinedLocation {
-  lat: number;
-  lng: number;
-  farmacias: Farmacia[];
-  medicos: Medico[];
-  savedEntityIds: Set<string>; // IDs of entities with saved visits
-}
-
-// Prepared marker data ready for rendering
-type MarkerData = {
-  location: CombinedLocation;
-  icon: Icon | DivIcon;
-  isSelected: boolean;
-  isHighlighted: boolean;
-};
 
 /**
  * Groups entities by their coordinates and tracks which have saved visits
@@ -104,6 +85,23 @@ function groupByLocation(
   return locationMap;
 }
 
+/** Calculates distance between 2 points in km */
+const getDistance = (p1: { lat: number; lng: number }, p2: { lat: number; lng: number }) => {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = ((p2.lat - p1.lat) * Math.PI) / 180;
+  const dLon = ((p2.lng - p1.lng) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((p1.lat * Math.PI) / 180) *
+      Math.cos((p2.lat * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+};
+
 /**
  * MapView component that displays pharmacies (farmacias) and doctors (medicos) as markers
  *
@@ -125,6 +123,11 @@ export function MapView({
   const [showOnlySelected, setShowOnlySelected] = useState(false);
   const [filterByPolygon, setFilterByPolygon] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [currentUserLocation, setCurrentUserLocation] = useState<null | {
+    lat: number;
+    lng: number;
+  }>(null);
+  const [isAroundUserLocation, setIsAroundUserLocation] = useState(false);
 
   // Check if a point is inside any of the polygons
   const isPointInPolygon = useCallback((lat: number, lng: number): boolean => {
@@ -139,6 +142,44 @@ export function MapView({
       }
     }
     return false;
+  }, []);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    const updateUserPosition = () => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          setCurrentUserLocation({ lat, lng });
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          setCurrentUserLocation(null);
+          setIsAroundUserLocation(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    };
+
+    // update immediately after mount
+    updateUserPosition();
+
+    const intervaIid = setInterval(() => {
+      updateUserPosition();
+    }, 30 * 1000);
+
+    return () => {
+      clearInterval(intervaIid);
+    };
   }, []);
 
   // Prepare marker data with icons based on location composition and selection state
@@ -210,7 +251,13 @@ export function MapView({
 
   // Filter markers based on selection and polygon filters
   const filteredMarkers = useMemo(() => {
-    let filtered = markers;
+    let filtered = [...markers];
+
+    if (isAroundUserLocation && currentUserLocation) {
+      filtered = filtered.filter((markerItem) => {
+        return getDistance(currentUserLocation, markerItem.location) < 2.5;
+      });
+    }
 
     // Filter by selection
     if (showOnlySelected) {
@@ -225,243 +272,14 @@ export function MapView({
     }
 
     return filtered;
-  }, [markers, showOnlySelected, filterByPolygon, isPointInPolygon]);
-
-  // Style for GeoJSON polygons
-  const polygonStyle: PathOptions = {
-    color: '#2563eb',
-    weight: 3 * 1.5, // Increase stroke weight by 50%
-    opacity: 1,
-    fillColor: '#3b82f6',
-    fillOpacity: 0.2,
-  };
-
-  // Render the map content (used in both normal and full screen views)
-  const renderMapContent = () => (
-    <MapContainer
-      center={center}
-      zoom={zoom}
-      style={{ height: '100%', width: '100%' }}
-      scrollWheelZoom={false}
-      doubleClickZoom={false}
-      touchZoom={false}
-      zoomControl={true}
-      dragging={true}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-
-      {/* Render GeoJSON polygons and lines */}
-      <GeoJSON data={POLYGON_GEO_JSON} style={polygonStyle} />
-
-      {/* Render markers with prepared data */}
-      {filteredMarkers.map((marker, index) => {
-        const { location, icon } = marker;
-
-        return (
-          <Marker key={`location-${index}`} position={[location.lat, location.lng]} icon={icon}>
-            <Popup maxWidth={300}>
-              <div className="popup-container">
-                {/* Select All Button */}
-                {location.farmacias.length + location.medicos.length > 1 && (
-                  <div
-                    style={{
-                      marginBottom: '12px',
-                      borderBottom: '1px solid #e5e7eb',
-                      paddingBottom: '8px',
-                    }}
-                  >
-                    <button
-                      onClick={() => {
-                        const allEntities: SelectedEntity[] = [
-                          ...location.farmacias.map((f) => ({
-                            type: 'farmacia' as const,
-                            id: f.id,
-                          })),
-                          ...location.medicos.map((m) => ({ type: 'medico' as const, id: m.id })),
-                        ];
-                        onToggleSelection?.(allEntities);
-                      }}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        backgroundColor: '#6366f1',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        width: '100%',
-                      }}
-                    >
-                      Seleccionar Todos ({location.farmacias.length + location.medicos.length})
-                    </button>
-                  </div>
-                )}
-                {/* Render all farmacias at this location */}
-                {location.farmacias.map((farmacia, farmaciaIndex) => {
-                  const isLastItem =
-                    location.medicos.length === 0 &&
-                    farmaciaIndex === location.farmacias.length - 1;
-                  const isFarmaciaSelected = selectedEntities.some(
-                    (e) => e.type === 'farmacia' && e.id === farmacia.id
-                  );
-                  const isFarmaciaSaved = location.savedEntityIds.has(farmacia.id);
-                  return (
-                    <div
-                      key={`farmacia-${farmaciaIndex}`}
-                      className={isLastItem ? '' : 'popup-item'}
-                    >
-                      <div className="popup-title">
-                        <h3>
-                          Farmacia{' '}
-                          {location.farmacias.length > 1
-                            ? `(${farmaciaIndex + 1}/${location.farmacias.length})`
-                            : ''}
-                          {isFarmaciaSaved && (
-                            <span
-                              style={{
-                                marginLeft: '8px',
-                                fontSize: '12px',
-                                color: '#059669',
-                                fontWeight: 'bold',
-                              }}
-                            >
-                              ✓ Guardada
-                            </span>
-                          )}
-                        </h3>
-                        {!isFarmaciaSaved && (
-                          <button
-                            onClick={() =>
-                              onToggleSelection?.([{ type: 'farmacia', id: farmacia.id }])
-                            }
-                            style={{
-                              padding: '4px 8px',
-                              fontSize: '12px',
-                              cursor: 'pointer',
-                              backgroundColor: isFarmaciaSelected ? '#dc2626' : '#059669',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                            }}
-                          >
-                            {isFarmaciaSelected ? 'Deseleccionar' : 'Seleccionar'}
-                          </button>
-                        )}
-                      </div>
-                      {farmacia.nombreCuenta && (
-                        <p className="popup-field">
-                          <strong>Nombre:</strong> {farmacia.nombreCuenta}
-                        </p>
-                      )}
-                      {farmacia.calle && (
-                        <p className="popup-field">
-                          <strong>Dirección:</strong> {farmacia.calle} {'  '}
-                          <a
-                            href={farmacia.googleMapsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            ( Maps )
-                          </a>
-                        </p>
-                      )}
-
-                      <p className="popup-field">
-                        <strong>Brick:</strong>{' '}
-                        {farmacia.nombreBrick || (
-                          <span className="popup-no-brick">(Sin Brick)</span>
-                        )}
-                      </p>
-                    </div>
-                  );
-                })}
-
-                {/* Render all medicos at this location */}
-                {location.medicos.map((medico, medicoIndex) => {
-                  const isLastItem = medicoIndex === location.medicos.length - 1;
-                  const isMedicoSelected = selectedEntities.some(
-                    (e) => e.type === 'medico' && e.id === medico.id
-                  );
-                  const isMedicoSaved = location.savedEntityIds.has(medico.id);
-                  return (
-                    <div key={`medico-${medicoIndex}`} className={isLastItem ? '' : 'popup-item'}>
-                      <div className="popup-title">
-                        <h3>
-                          Médico{' '}
-                          {location.medicos.length > 1
-                            ? `(${medicoIndex + 1}/${location.medicos.length})`
-                            : ''}
-                          {isMedicoSaved && (
-                            <span
-                              style={{
-                                marginLeft: '8px',
-                                fontSize: '12px',
-                                color: '#2563eb',
-                                fontWeight: 'bold',
-                              }}
-                            >
-                              ✓ Guardado
-                            </span>
-                          )}
-                        </h3>
-                        {!isMedicoSaved && (
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <button
-                              onClick={() =>
-                                onToggleSelection?.([{ type: 'medico', id: medico.id }])
-                              }
-                              style={{
-                                padding: '4px 8px',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                backgroundColor: isMedicoSelected ? '#dc2626' : '#2563eb',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                              }}
-                            >
-                              {isMedicoSelected ? 'Deseleccionar' : 'Seleccionar'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {medico.nombreCuenta && (
-                        <p className="popup-field">
-                          <strong>Nombre:</strong> {medico.nombreCuenta}
-                        </p>
-                      )}
-                      {medico.especialidad && (
-                        <p className="popup-field">
-                          <strong>Especialidad:</strong> {medico.especialidad}
-                        </p>
-                      )}
-                      {medico.calle && (
-                        <p className="popup-field">
-                          <strong>Dirección:</strong> {medico.calle} {'  '}
-                          <a href={medico.googleMapsUrl} target="_blank" rel="noopener noreferrer">
-                            ( Maps )
-                          </a>
-                        </p>
-                      )}
-
-                      <p className="popup-field">
-                        <strong>Brick:</strong>{' '}
-                        {medico.nombreBrick || <span className="popup-no-brick">(Sin Brick)</span>}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
-    </MapContainer>
-  );
+  }, [
+    markers,
+    showOnlySelected,
+    filterByPolygon,
+    isPointInPolygon,
+    isAroundUserLocation,
+    currentUserLocation,
+  ]);
 
   return (
     <>
@@ -522,13 +340,39 @@ export function MapView({
           <Crop />
         </button>
 
+        {currentUserLocation && (
+          <button
+            onClick={() => setIsAroundUserLocation((prev) => !prev)}
+            style={{
+              position: 'absolute',
+              bottom: '20px',
+              left: '140px',
+              zIndex: 1000,
+              width: '48px',
+              height: '48px',
+              padding: '0',
+              cursor: 'pointer',
+              backgroundColor: isAroundUserLocation ? '#f59e0b' : 'white',
+              color: isAroundUserLocation ? 'white' : '#374151',
+              border: isAroundUserLocation ? 'none' : '2px solid #e5e7eb',
+              borderRadius: '50%',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Ver alrededor del usuario"
+          >
+            <PinDrop />
+          </button>
+        )}
         {/* Full Screen Toggle Button - Circular Bottom Left */}
         <button
           onClick={() => setIsFullScreen(true)}
           style={{
             position: 'absolute',
             bottom: '20px',
-            left: '140px',
+            left: '200px',
             zIndex: 1000,
             width: '48px',
             height: '48px',
@@ -548,7 +392,14 @@ export function MapView({
           <Fullscreen />
         </button>
 
-        {renderMapContent()}
+        <MapContent
+          userPosition={currentUserLocation}
+          center={center}
+          zoom={zoom}
+          selectedEntities={selectedEntities}
+          markers={filteredMarkers}
+          onToggleSelection={onToggleSelection}
+        />
       </div>
 
       {/* Full Screen Dialog */}
@@ -654,7 +505,41 @@ export function MapView({
             <Crop />
           </button>
 
-          <div style={{ width: '100%', height: '100%' }}>{renderMapContent()}</div>
+          <button
+            onClick={() => setIsAroundUserLocation((prev) => !prev)}
+            style={{
+              position: 'absolute',
+              bottom: '20px',
+              left: '140px',
+              zIndex: 10000,
+              width: '48px',
+              height: '48px',
+              padding: '0',
+              cursor: 'pointer',
+              backgroundColor: isAroundUserLocation ? '#f59e0b' : 'white',
+              color: isAroundUserLocation ? 'white' : '#374151',
+              border: isAroundUserLocation ? 'none' : '2px solid #e5e7eb',
+              borderRadius: '50%',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Ver alrededor del usuario"
+          >
+            <PinDrop />
+          </button>
+
+          <div style={{ width: '100%', height: '100%' }}>
+            <MapContent
+              userPosition={currentUserLocation}
+              center={center}
+              zoom={zoom}
+              selectedEntities={selectedEntities}
+              markers={filteredMarkers}
+              onToggleSelection={onToggleSelection}
+            />
+          </div>
         </dialog>
       )}
     </>

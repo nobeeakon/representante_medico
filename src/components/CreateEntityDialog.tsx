@@ -13,10 +13,16 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  OutlinedInput,
+  Chip,
+  MenuItem,
 } from '@mui/material';
 import { Add as AddIcon, MyLocation as MyLocationIcon } from '@mui/icons-material';
 import type { Farmacia } from '../__types__/pharmacy';
-import type { Medico } from '../__types__/doctor';
+import type { Medico, CompradorStatus } from '../__types__/doctor';
 
 type EntityType = 'medico' | 'farmacia';
 
@@ -49,6 +55,7 @@ export type UpdateEntityFormData = {
   propietarioCuenta: string;
   // Medico-specific fields
   ciudad: string;
+  compradorStatus: CompradorStatus | undefined;
 };
 
 type DialogState = {
@@ -67,7 +74,7 @@ const getInitialState = (): DialogState => ({
     nombreCuenta: '',
     email: '',
     phone: '',
-    estado: '',
+    estado: 'Queretaro',
     municipio: '',
     colonia: '',
     calle: '',
@@ -88,8 +95,16 @@ const getInitialState = (): DialogState => ({
     categoriaMedico: '',
     propietarioCuenta: '',
     ciudad: '',
+    compradorStatus: undefined,
   },
 });
+
+const DOCTOR_BUYER_STATUS_DISPLAY: Record<CompradorStatus, string> = {
+  muyBueno: 'Muy Bueno',
+  bueno: 'Bueno',
+  normal: 'Normal',
+  malo: 'Malo',
+};
 
 type CreateEntityDialogProps = {
   onClose: () => void;
@@ -213,6 +228,7 @@ export function CreateEntityDialog({ onClose, onSave, entity }: CreateEntityDial
           lng: state.data.lng,
           googleMapsUrl: state.data.googleMapsUrl.trim() || undefined,
           direccionDetallesAdicionales: state.data.direccionDetallesAdicionales.trim() || undefined,
+          compradorEstatus: state.data.compradorStatus || undefined,
         };
         await onSave({ type: 'medico', data: newDoctor });
       } else {
@@ -362,6 +378,37 @@ export function CreateEntityDialog({ onClose, onSave, entity }: CreateEntityDial
                 size="small"
               />
             </Box>
+            {state.data.entityType === 'medico' && (
+              <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
+                <InputLabel id="buyer-status-filter-label">Tipo de comprador</InputLabel>
+                <Select
+                  labelId="buyer-status-filter-label"
+                  value={state.data.compradorStatus}
+                  onChange={(e) =>
+                    setState((prev) => ({
+                      ...prev,
+                      data: { ...prev.data, compradorStatus: e.target.value },
+                    }))
+                  }
+                  input={<OutlinedInput label="Tipo de comprador" />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      <Chip
+                        key={selected}
+                        label={DOCTOR_BUYER_STATUS_DISPLAY[selected]}
+                        size="small"
+                      />
+                    </Box>
+                  )}
+                >
+                  {Object.entries(DOCTOR_BUYER_STATUS_DISPLAY).map(([key, displayText]) => (
+                    <MenuItem key={key} value={key}>
+                      <Chip label={displayText} size="small" />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
           </Stack>
         </Box>
 
