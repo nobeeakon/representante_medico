@@ -788,7 +788,6 @@ export function SelectedEntitiesTable({
                             onClick={() => handleDeleteVisit(item.visitId)}
                             color="error"
                             aria-label="eliminar visita"
-                            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
